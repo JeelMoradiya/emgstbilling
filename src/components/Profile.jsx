@@ -28,7 +28,7 @@ import {
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase"; // Assuming you have a firebase config file
+import { auth } from "../firebase";
 import { deleteUser } from "firebase/auth";
 
 const Profile = () => {
@@ -51,6 +51,7 @@ const Profile = () => {
       landmark: "",
       city: "",
       state: "",
+      pincode: "",
     },
   });
   const [error, setError] = useState("");
@@ -68,66 +69,8 @@ const Profile = () => {
     "Junagadh",
     "Anand",
     "Nadiad",
-    "Morbi",
-    "Navsari",
-    "Bharuch",
-    "Vapi",
-    "Gandhidham",
-    "Veraval",
-    "Bhuj",
-    "Porbandar",
-    "Mehsana",
-    "Palanpur",
-    "Surendranagar",
-    "Amreli",
-    "Godhra",
-    "Valsad",
-    "Dahod",
-    "Botad",
-    "Patan",
-    "Deesa",
-    "Modasa",
-    "Lunawada",
-    "Chhota Udaipur",
-    "Mandvi",
-    "Dwarka",
-    "Dhoraji",
-    "Jetpur",
-    "Keshod",
-    "Khambhat",
-    "Wadhwan",
-    "Upleta",
-    "Kalol",
-    "Sanand",
-    "Halol",
-    "Borsad",
-    "Viramgam",
-    "Unjha",
-    "Manavadar",
-    "Mangrol",
-    "Morva Hadaf",
-    "Kapadvanj",
-    "Visnagar",
-    "Kadi",
-    "Jhalod",
-    "Tharad",
-    "Mahudha",
-    "Savarkundla",
-    "Mahuva",
-    "Ranavav",
-    "Songadh",
-    "Babra",
-    "Talaja",
-    "Vijapur",
-  ]; // Expand as needed
-  const states = [
-    "Gujarat",
-    "Maharashtra",
-    "Delhi",
-    "Karnataka",
-    "Telangana",
-    "Tamil Nadu",
-  ]; // Expand as needed
+  ];
+  const states = ["Gujarat", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu"];
 
   useEffect(() => {
     if (userProfile) {
@@ -145,6 +88,7 @@ const Profile = () => {
           landmark: userProfile.address?.landmark || "",
           city: userProfile.address?.city || "",
           state: userProfile.address?.state || "",
+          pincode: userProfile.address?.pincode || "",
         },
       });
     }
@@ -180,6 +124,7 @@ const Profile = () => {
         landmark: userProfile?.address?.landmark || "",
         city: userProfile?.address?.city || "",
         state: userProfile?.address?.state || "",
+        pincode: userProfile?.address?.pincode || "",
       },
     });
     setIsEditing(false);
@@ -212,11 +157,15 @@ const Profile = () => {
       !formData.address.plotHouseNo ||
       !formData.address.line1 ||
       !formData.address.area ||
-      !formData.address.landmark ||
       !formData.address.city ||
-      !formData.address.state
+      !formData.address.state ||
+      !formData.address.pincode
     ) {
-      setError("All address fields are required");
+      setError("Required address fields are missing");
+      return false;
+    }
+    if (!/^[0-9]{6}$/.test(formData.address.pincode)) {
+      setError("Pincode must be 6 digits");
       return false;
     }
     return true;
@@ -248,8 +197,7 @@ const Profile = () => {
   const handleDeleteAccount = async () => {
     try {
       await deleteUser(auth.currentUser);
-      navigate("/login"); // Redirect to login after deletion
-      toast.success("Account deleted successfully");
+      navigate("/login");
     } catch (error) {
       console.error("Failed to delete account:", error);
       setError("Failed to delete account. Please try again.");
@@ -334,7 +282,6 @@ const Profile = () => {
           )}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            {/* User Information */}
             <Typography variant="h6" gutterBottom>
               User Information
             </Typography>
@@ -372,7 +319,6 @@ const Profile = () => {
               </Grid>
             </Grid>
 
-            {/* GST Information */}
             <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
               GST Information
             </Typography>
@@ -409,7 +355,6 @@ const Profile = () => {
               </Grid>
             </Grid>
 
-            {/* Address Information */}
             <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
               Address Information
             </Typography>
@@ -455,7 +400,6 @@ const Profile = () => {
                   value={formData.address.landmark}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  required
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -497,6 +441,17 @@ const Profile = () => {
                     </option>
                   ))}
                 </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Pincode"
+                  name="address.pincode"
+                  value={formData.address.pincode}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  required
+                />
               </Grid>
             </Grid>
 
@@ -545,7 +500,6 @@ const Profile = () => {
         </Paper>
       </motion.div>
 
-      {/* Delete Account Confirmation Dialog */}
       <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
         <DialogTitle>Delete Account</DialogTitle>
         <DialogContent>

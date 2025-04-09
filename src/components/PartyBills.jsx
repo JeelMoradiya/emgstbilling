@@ -17,12 +17,9 @@ import {
   Chip,
   CircularProgress,
   Box,
-  IconButton,
-  Tooltip
+
 } from '@mui/material';
-import { ArrowBack, PictureAsPdf, Add } from '@mui/icons-material';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillPDF from './BillPDF';
+import { ArrowBack, Add } from '@mui/icons-material';
 
 const PartyBills = () => {
   const { partyId } = useParams();
@@ -80,7 +77,14 @@ const PartyBills = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
           <Typography variant="h5">
             Bills for {party.partyName} ({party.gstNo})
           </Typography>
@@ -99,25 +103,34 @@ const PartyBills = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Bill No</TableCell>
+                {/* <TableCell>Name</TableCell> */}
                 <TableCell>Date</TableCell>
-                <TableCell align="right">Amount</TableCell>
+                <TableCell>Amount</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {bills.length > 0 ? (
-                bills.map(bill => (
+                bills.map((bill) => (
                   <TableRow key={bill.id}>
                     <TableCell>{bill.billNo}</TableCell>
-                    <TableCell>{format(new Date(bill.date), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell align="right">₹{bill.total.toFixed(2)}</TableCell>
+                    {/* <TableCell>{bill.partyName}</TableCell> */}
+                    <TableCell>
+                      {new Date(bill.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      ₹{bill.total.toFixed(2)}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={bill.status}
                         color={
-                          bill.status === 'paid' ? 'success' :
-                          bill.status === 'pending' ? 'warning' : 'error'
+                          bill.status === "paid"
+                            ? "success"
+                            : bill.status === "pending"
+                            ? "warning"
+                            : "error"
                         }
                         size="small"
                       />
@@ -161,11 +174,7 @@ const PartyBills = () => {
         </TableContainer>
 
         <Box sx={{ mt: 2 }}>
-          <Button
-            component={Link}
-            to="/parties"
-            startIcon={<ArrowBack />}
-          >
+          <Button component={Link} to="/parties" startIcon={<ArrowBack />}>
             Back to All Parties
           </Button>
         </Box>

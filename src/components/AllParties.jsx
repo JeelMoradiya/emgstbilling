@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Container,
   Paper,
@@ -17,8 +17,8 @@ import {
   CircularProgress,
   Box,
   Alert,
-} from '@mui/material';
-import { Add } from '@mui/icons-material';
+} from "@mui/material";
+import { Add } from "@mui/icons-material";
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);
@@ -28,14 +28,14 @@ const AllParties = () => {
 
   useEffect(() => {
     if (!currentUser) {
-      setError('Please log in to view parties');
+      setError("Please log in to view parties");
       setLoading(false);
       return;
     }
 
     const fetchParties = async () => {
       try {
-        const q = query(collection(db, 'parties'), where('createdBy', '==', currentUser.uid));
+        const q = query(collection(db, "parties"), where("createdBy", "==", currentUser.uid));
         const querySnapshot = await getDocs(q);
         const partiesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -43,8 +43,8 @@ const AllParties = () => {
         }));
         setParties(partiesData);
       } catch (error) {
-        console.error('Error fetching parties: ', error);
-        setError('Failed to fetch parties: ' + error.message);
+        console.error("Error fetching parties: ", error);
+        setError("Failed to fetch parties: " + error.message);
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ const AllParties = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth="lg" sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
         <CircularProgress />
       </Container>
     );
@@ -69,14 +69,7 @@ const AllParties = () => {
             {error}
           </Alert>
         )}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
           <Typography variant="h5">All Parties</Typography>
           <Button
             variant="contained"
@@ -93,24 +86,14 @@ const AllParties = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Company Name</TableCell>{" "}
-                {/* Updated to use companyName */}
-                <TableCell>GST No</TableCell>
-                <TableCell>Mobile</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell>Company Name</TableCell><TableCell>GST No</TableCell><TableCell>Mobile</TableCell><TableCell>Email</TableCell><TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {parties.length > 0 ? (
                 parties.map((party) => (
                   <TableRow key={party.id}>
-                    <TableCell>{party.companyName || "N/A"}</TableCell>{" "}
-                    {/* Updated */}
-                    <TableCell>{party.gstNo || "N/A"}</TableCell>
-                    <TableCell>{party.mobileNo || "N/A"}</TableCell>
-                    <TableCell>{party.email || "N/A"}</TableCell>
-                    <TableCell>
+                    <TableCell>{party.companyName || "N/A"}</TableCell><TableCell>{party.gstNo || "N/A"}</TableCell><TableCell>{party.mobileNo || "N/A"}</TableCell><TableCell>{party.email || "N/A"}</TableCell><TableCell>
                       <Button
                         component={Link}
                         to={`/party-bills/${party.id}`}

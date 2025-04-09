@@ -39,8 +39,6 @@ import {
   FormControl,
   InputLabel,
   Divider,
-  Card,
-  CardContent,
   Collapse,
 } from "@mui/material";
 import {
@@ -103,6 +101,9 @@ const PartyManagement = () => {
     landmark: Yup.string(),
     city: Yup.string().required("Required"),
     state: Yup.string().required("Required"),
+    pincode: Yup.string()
+      .matches(/^[0-9]{6}$/, "Pincode must be 6 digits")
+      .required("Required"),
   });
 
   const formik = useFormik({
@@ -119,6 +120,7 @@ const PartyManagement = () => {
       landmark: "",
       city: "",
       state: "",
+      pincode: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -181,6 +183,7 @@ const PartyManagement = () => {
       landmark: party.landmark || "",
       city: party.city || "",
       state: party.state || "",
+      pincode: party.pincode || "",
     });
     setOpenDialog(true);
   };
@@ -213,6 +216,20 @@ const PartyManagement = () => {
     setExpandedRow(expandedRow === partyId ? null : partyId);
   };
 
+  const formatAddress = (party) => {
+    return [
+      party.plotHouseNo,
+      party.line1,
+      party.area,
+      party.landmark,
+      party.city,
+      party.state,
+      party.pincode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  };
+
   const cities = [
     "Ahmedabad",
     "Surat",
@@ -224,25 +241,8 @@ const PartyManagement = () => {
     "Junagadh",
     "Anand",
     "Nadiad",
-    "Morbi",
-    "Navsari",
-    "Bharuch",
-    "Vapi",
-    "Gandhidham",
-    "Veraval",
-    "Bhuj",
-    "Porbandar",
-    "Mehsana",
-    "Palanpur",
   ];
-  const states = [
-    "Gujarat",
-    "Maharashtra",
-    "Delhi",
-    "Karnataka",
-    "Tamil Nadu",
-    "West Bengal",
-  ];
+  const states = ["Gujarat", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu"];
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -254,8 +254,7 @@ const PartyManagement = () => {
         >
           Party Management
         </Typography>
-        
-        {/* Success/Error Messages */}
+
         {success && (
           <Alert severity="success" sx={{ mb: 3 }}>
             Party {success} successfully!
@@ -267,7 +266,6 @@ const PartyManagement = () => {
           </Alert>
         )}
 
-        {/* Add Party Section */}
         <Box
           sx={{
             display: "flex",
@@ -287,7 +285,6 @@ const PartyManagement = () => {
           </Button>
         </Box>
 
-        {/* Parties List Section */}
         <TableContainer component={Paper} elevation={1}>
           <Table>
             <TableHead>
@@ -409,13 +406,7 @@ const PartyManagement = () => {
                                   Address Information
                                 </Typography>
                                 <Typography variant="body2">
-                                  {`${party.plotHouseNo || ""}, ${
-                                    party.line1 || ""
-                                  }, ${party.area || ""}, ${
-                                    party.landmark || ""
-                                  }, ${party.city || ""}, ${party.state || ""}`
-                                    .replace(/, ,/g, ",")
-                                    .replace(/^,|,$/g, "") || "N/A"}
+                                  {formatAddress(party) || "N/A"}
                                 </Typography>
                               </Grid>
                             </Grid>
@@ -438,7 +429,6 @@ const PartyManagement = () => {
           </Table>
         </TableContainer>
 
-        {/* Add/Edit Party Dialog */}
         <Dialog
           open={openDialog}
           onClose={handleCloseDialog}
@@ -449,7 +439,6 @@ const PartyManagement = () => {
             {selectedParty ? "Edit Party" : "Add New Party"}
           </DialogTitle>
           <DialogContent sx={{ mt: 2 }}>
-            {/* Party Information */}
             <Box sx={{ mb: 3 }}>
               <Typography
                 variant="h6"
@@ -509,7 +498,6 @@ const PartyManagement = () => {
               </Grid>
             </Box>
 
-            {/* GST Information */}
             <Divider sx={{ my: 2 }} />
             <Box sx={{ mb: 3 }}>
               <Typography
@@ -571,7 +559,6 @@ const PartyManagement = () => {
               </Grid>
             </Box>
 
-            {/* Address Information */}
             <Divider sx={{ my: 2 }} />
             <Box>
               <Typography
@@ -695,6 +682,23 @@ const PartyManagement = () => {
                       </Typography>
                     )}
                   </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    id="pincode"
+                    name="pincode"
+                    label="Pincode"
+                    value={formik.values.pincode}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.pincode && Boolean(formik.errors.pincode)
+                    }
+                    helperText={
+                      formik.touched.pincode && formik.errors.pincode
+                    }
+                  />
                 </Grid>
               </Grid>
             </Box>

@@ -103,9 +103,9 @@ import {
                 <TableHead>
                   <TableRow>
                     <TableCell>Bill No</TableCell>
-                    <TableCell>Party</TableCell>
+                    {/* <TableCell>Name</TableCell> */}
                     <TableCell>Date</TableCell>
-                    <TableCell align="right">Amount</TableCell>
+                    <TableCell>Amount</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Download</TableCell>
                   </TableRow>
@@ -114,9 +114,9 @@ import {
                   {recentBills.map(bill => (
                     <TableRow key={bill.id}>
                       <TableCell>{bill.billNo}</TableCell>
-                      <TableCell>{bill.partyDetails.partyName}</TableCell>
+                      {/* <TableCell>{bill.partyDetails.partyName}</TableCell> */}
                       <TableCell>{new Date(bill.date).toLocaleDateString()}</TableCell>
-                      <TableCell align="right">₹{bill.total.toFixed(2)}</TableCell>
+                      <TableCell>₹{bill.total.toFixed(2)}</TableCell>
                       <TableCell>
                         <Chip
                           label={bill.status}
