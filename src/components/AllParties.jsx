@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -16,7 +16,7 @@ import {
   TableRow,
   CircularProgress,
   Box,
-  Alert
+  Alert,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 
@@ -35,10 +35,11 @@ const AllParties = () => {
 
     const fetchParties = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'parties'));
-        const partiesData = querySnapshot.docs.map(doc => ({
+        const q = query(collection(db, 'parties'), where('createdBy', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const partiesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
         setParties(partiesData);
       } catch (error) {
@@ -63,11 +64,20 @@ const AllParties = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">
-            All Parties
-          </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Typography variant="h5">All Parties</Typography>
           <Button
             variant="contained"
             component={Link}
@@ -83,7 +93,8 @@ const AllParties = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Party Name</TableCell>
+                <TableCell>Company Name</TableCell>{" "}
+                {/* Updated to use companyName */}
                 <TableCell>GST No</TableCell>
                 <TableCell>Mobile</TableCell>
                 <TableCell>Email</TableCell>
@@ -92,12 +103,13 @@ const AllParties = () => {
             </TableHead>
             <TableBody>
               {parties.length > 0 ? (
-                parties.map(party => (
+                parties.map((party) => (
                   <TableRow key={party.id}>
-                    <TableCell>{party.partyName || 'N/A'}</TableCell>
-                    <TableCell>{party.gstNo || 'N/A'}</TableCell>
-                    <TableCell>{party.mobileNo || 'N/A'}</TableCell>
-                    <TableCell>{party.email || 'N/A'}</TableCell>
+                    <TableCell>{party.companyName || "N/A"}</TableCell>{" "}
+                    {/* Updated */}
+                    <TableCell>{party.gstNo || "N/A"}</TableCell>
+                    <TableCell>{party.mobileNo || "N/A"}</TableCell>
+                    <TableCell>{party.email || "N/A"}</TableCell>
                     <TableCell>
                       <Button
                         component={Link}

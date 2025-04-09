@@ -1,4 +1,5 @@
-import { useState } from 'react';
+// src/components/Register.jsx
+import { useState } from "react";
 import {
   Container,
   Box,
@@ -9,266 +10,466 @@ import {
   InputAdornment,
   Link,
   Card,
-  CardContent
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
-import { Formik, Form } from 'formik';
-import * as Yup from 'yup';
-import { useAuth } from '../contexts/AuthContext';
+  CardContent,
+  Stepper,
+  Step,
+  StepLabel,
+  MenuItem,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { toast } from "react-toastify";
+import { motion } from "framer-motion";
+import { Formik, Form } from "formik";
+import * as Yup from "yup";
+import { useAuth } from "../contexts/AuthContext";
 
 const RegisterSchema = Yup.object().shape({
-  fullName: Yup.string().min(2, 'Too Short!').max(50, 'Too Long!').required('Full name is required'),
-  email: Yup.string().email('Invalid email').required('Email is required'),
-  mobileNo: Yup.string().matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits').required('Mobile number is required'),
-  address: Yup.string().min(5, 'Address too short').required('Address is required'),
-  gstNo: Yup.string().matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST number').required('GST number is required'),
-  gstOwnerName: Yup.string().min(2, 'Too Short!').required('GST owner name is required'),
-  companyName: Yup.string().min(2, 'Too Short!').required('Company name is required'),
+  fullName: Yup.string()
+    .min(2, "Too Short!")
+    .max(50, "Too Long!")
+    .required("Full name is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
+  mobileNo: Yup.string()
+    .matches(/^[0-9]{10}$/, "Mobile number must be 10 digits")
+    .required("Mobile number is required"),
   password: Yup.string()
-    .min(8, 'Password must be at least 8 characters')
-    .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .matches(/[0-9]/, 'Password must contain at least one number')
-    .required('Password is required'),
-  confirmPassword: Yup.string().oneOf([Yup.ref('password'), null], 'Passwords must match').required('Confirm password is required'),
+    .min(8, "Password must be at least 8 characters")
+    .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+    .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .matches(/[0-9]/, "Password must contain at least one number")
+    .required("Password is required"),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("password"), null], "Passwords must match")
+    .required("Confirm password is required"),
+  companyName: Yup.string()
+    .min(2, "Too Short!")
+    .required("Company name is required"),
+  gstOwnerName: Yup.string()
+    .min(2, "Too Short!")
+    .required("GST owner name is required"),
+  gstNo: Yup.string()
+    .matches(
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+      "Invalid GST number"
+    )
+    .required("GST number is required"),
+  plotHouseNo: Yup.string().required("Plot/House No. is required"),
+  line1: Yup.string().required("Line 1 is required"),
+  area: Yup.string().required("Area is required"),
+  landmark: Yup.string().required("Landmark is required"),
+  city: Yup.string().required("City is required"),
+  state: Yup.string().required("State is required"),
+  pincode: Yup.string()
+    .matches(/^[0-9]{6}$/, "Pincode must be 6 digits")
+    .required("Pincode is required"),
 });
 
+const steps = ["User Information", "GST Information", "Address Information"];
+
 const Register = () => {
+  const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const handleSubmit = async (values, { setSubmitting }) => {
+  const cities = [
+    "Ahmedabad",
+    "Surat",
+    "Vadodara",
+    "Rajkot",
+    "Bhavnagar",
+    "Jamnagar",
+    "Gandhinagar",
+    "Junagadh",
+    "Anand",
+    "Nadiad",
+  ];
+  const states = ["Gujarat", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu"];
+
+  const handleSubmit = async (values) => {
     try {
       const userData = {
         fullName: values.fullName,
         email: values.email,
         mobileNo: values.mobileNo,
-        address: values.address,
-        gstNo: values.gstNo,
-        gstOwnerName: values.gstOwnerName,
         companyName: values.companyName,
+        gstOwnerName: values.gstOwnerName,
+        gstNo: values.gstNo,
+        address: {
+          plotHouseNo: values.plotHouseNo,
+          line1: values.line1,
+          area: values.area,
+          landmark: values.landmark,
+          city: values.city,
+          state: values.state,
+          pincode: values.pincode,
+        },
       };
       await register(values.email, values.password, userData);
-      toast.success('Registration successful');
-      navigate('/');
+      toast.success("Registration successful!", { autoClose: 2000 });
+      setTimeout(() => navigate("/"), 2000);
     } catch (error) {
-      console.error('Registration error:', error.code, error.message);
-      switch (error.code) {
-        case 'auth/invalid-email':
-          toast.error('Invalid email format');
-          break;
-        case 'auth/weak-password':
-          toast.error('Password must be at least 6 characters');
-          break;
-        case 'auth/email-already-in-use':
-          toast.error('Email already registered');
-          break;
-        default:
-          toast.error(error.message || 'Registration failed');
-      }
-    } finally {
-      setSubmitting(false);
+      toast.error(`Registration failed: ${error.message}`, { autoClose: 3000 });
+    }
+  };
+
+  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
+
+  const getStepContent = (
+    step,
+    { errors, touched, handleChange, handleBlur, values }
+  ) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <TextField
+              fullWidth
+              margin="normal"
+              name="fullName"
+              label="Full Name"
+              value={values.fullName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.fullName && Boolean(errors.fullName)}
+              helperText={touched.fullName && errors.fullName}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="email"
+              label="Email"
+              value={values.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.email && Boolean(errors.email)}
+              helperText={touched.email && errors.email}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="mobileNo"
+              label="Mobile No."
+              value={values.mobileNo}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.mobileNo && Boolean(errors.mobileNo)}
+              helperText={touched.mobileNo && errors.mobileNo}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="password"
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              value={values.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.password && Boolean(errors.password)}
+              helperText={touched.password && errors.password}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="confirmPassword"
+              label="Confirm Password"
+              type={showPassword ? "text" : "password"}
+              value={values.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.confirmPassword && Boolean(errors.confirmPassword)}
+              helperText={touched.confirmPassword && errors.confirmPassword}
+              sx={{ flex: "1 1 48%" }}
+            />
+          </Box>
+        );
+      case 1:
+        return (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <TextField
+              fullWidth
+              margin="normal"
+              name="companyName"
+              label="Company Name"
+              value={values.companyName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.companyName && Boolean(errors.companyName)}
+              helperText={touched.companyName && errors.companyName}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="gstOwnerName"
+              label="GST Owner Name"
+              value={values.gstOwnerName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.gstOwnerName && Boolean(errors.gstOwnerName)}
+              helperText={touched.gstOwnerName && errors.gstOwnerName}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="gstNo"
+              label="GST No"
+              value={values.gstNo}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.gstNo && Boolean(errors.gstNo)}
+              helperText={touched.gstNo && errors.gstNo}
+              sx={{ flex: "1 1 48%" }}
+            />
+          </Box>
+        );
+      case 2:
+        return (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <TextField
+              fullWidth
+              margin="normal"
+              name="plotHouseNo"
+              label="Plot/House No."
+              value={values.plotHouseNo}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.plotHouseNo && Boolean(errors.plotHouseNo)}
+              helperText={touched.plotHouseNo && errors.plotHouseNo}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="line1"
+              label="Line 1"
+              value={values.line1}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.line1 && Boolean(errors.line1)}
+              helperText={touched.line1 && errors.line1}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="area"
+              label="Area"
+              value={values.area}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.area && Boolean(errors.area)}
+              helperText={touched.area && errors.area}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              name="landmark"
+              label="Landmark"
+              value={values.landmark}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.landmark && Boolean(errors.landmark)}
+              helperText={touched.landmark && errors.landmark}
+              sx={{ flex: "1 1 48%" }}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              select
+              name="city"
+              label="City"
+              value={values.city}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.city && Boolean(errors.city)}
+              helperText={touched.city && errors.city}
+              sx={{ flex: "1 1 48%" }}
+            >
+              {cities.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              margin="normal"
+              select
+              name="state"
+              label="State"
+              value={values.state}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.state && Boolean(errors.state)}
+              helperText={touched.state && errors.state}
+              sx={{ flex: "1 1 48%" }}
+            >
+              {states.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              fullWidth
+              margin="normal"
+              name="pincode"
+              label="Pincode"
+              value={values.pincode}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.pincode && Boolean(errors.pincode)}
+              helperText={touched.pincode && errors.pincode}
+              sx={{ flex: "1 1 48%" }}
+            />
+          </Box>
+        );
+      default:
+        return "Unknown step";
     }
   };
 
   return (
-    <Container 
-      maxWidth="md" 
-      sx={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center',
-        justifyContent: 'center',
-        py: 4
+    <Container
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        py: 4,
       }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        style={{ width: '100%', maxWidth: 600 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ width: "100%", maxWidth: 700 }}
       >
         <Card
           sx={{
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
             borderRadius: 4,
-            overflow: 'hidden',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
-            },
+            bgcolor: "white",
+            overflow: "hidden",
+            "&:hover": { boxShadow: "0 14px 40px rgba(0,0,0,0.2)" },
           }}
         >
-          <CardContent sx={{ p: 4 }}>
-            <Typography 
-              variant="h5" 
-              align="center" 
-              sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}
+          <CardContent sx={{ p: 5 }}>
+            <Typography
+              variant="h4"
+              align="center"
+              sx={{ mb: 4, fontWeight: "bold", color: "primary.main" }}
             >
-              Register
+              Create Your Account
             </Typography>
+            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+              {steps.map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
             <Formik
               initialValues={{
-                fullName: '',
-                email: '',
-                mobileNo: '',
-                address: '',
-                gstNo: '',
-                gstOwnerName: '',
-                companyName: '',
-                password: '',
-                confirmPassword: ''
+                fullName: "",
+                email: "",
+                mobileNo: "",
+                password: "",
+                confirmPassword: "",
+                companyName: "",
+                gstOwnerName: "",
+                gstNo: "",
+                plotHouseNo: "",
+                line1: "",
+                area: "",
+                landmark: "",
+                city: "",
+                state: "",
+                pincode: "",
               }}
               validationSchema={RegisterSchema}
               onSubmit={handleSubmit}
             >
-              {({ errors, touched, handleChange, handleBlur, values, isSubmitting }) => (
+              {({
+                errors,
+                touched,
+                handleChange,
+                handleBlur,
+                values,
+                isSubmitting,
+              }) => (
                 <Form>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="fullName" 
-                      label="Full Name" 
-                      value={values.fullName} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.fullName && Boolean(errors.fullName)} 
-                      helperText={touched.fullName && errors.fullName} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="email" 
-                      label="Email" 
-                      value={values.email} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.email && Boolean(errors.email)} 
-                      helperText={touched.email && errors.email} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="mobileNo" 
-                      label="Mobile No." 
-                      value={values.mobileNo} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.mobileNo && Boolean(errors.mobileNo)} 
-                      helperText={touched.mobileNo && errors.mobileNo} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="gstNo" 
-                      label="GST No" 
-                      value={values.gstNo} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.gstNo && Boolean(errors.gstNo)} 
-                      helperText={touched.gstNo && errors.gstNo} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="gstOwnerName" 
-                      label="GST Owner Name" 
-                      value={values.gstOwnerName} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.gstOwnerName && Boolean(errors.gstOwnerName)} 
-                      helperText={touched.gstOwnerName && errors.gstOwnerName} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="companyName" 
-                      label="Company Name" 
-                      value={values.companyName} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.companyName && Boolean(errors.companyName)} 
-                      helperText={touched.companyName && errors.companyName} 
-                      sx={{ flex: '1 1 48%' }} 
-                    />
-                    <TextField 
-                      fullWidth 
-                      margin="normal" 
-                      name="address" 
-                      label="Address" 
-                      value={values.address} 
-                      onChange={handleChange} 
-                      onBlur={handleBlur} 
-                      error={touched.address && Boolean(errors.address)} 
-                      helperText={touched.address && errors.address} 
-                      sx={{ flex: '1 1 100%' }} 
-                    />
-                    <TextField
-                      fullWidth
-                      margin="normal"
-                      name="password"
-                      label="Password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={values.password}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      error={touched.password && Boolean(errors.password)}
-                      helperText={touched.password && errors.password}
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton 
-                              onClick={() => setShowPassword(!showPassword)} 
-                              edge="end"
-                            >
-                              {showPassword ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                      sx={{ flex: '1 1 48%' }}
-                    />
-                    <TextField
-                      fullWidth
-                      margin="normal"
-                      name="confirmPassword"
-                      label="Confirm Password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={values.confirmPassword}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      error={touched.confirmPassword && Boolean(errors.confirmPassword)}
-                      helperText={touched.confirmPassword && errors.confirmPassword}
-                      sx={{ flex: '1 1 48%' }}
-                    />
+                  {getStepContent(activeStep, {
+                    errors,
+                    touched,
+                    handleChange,
+                    handleBlur,
+                    values,
+                  })}
+                  <Box sx={{ display: "flex", flexDirection: "row", pt: 3 }}>
+                    <Button
+                      color="inherit"
+                      disabled={activeStep === 0}
+                      onClick={handleBack}
+                      sx={{ mr: 1 }}
+                    >
+                      Back
+                    </Button>
+                    <Box sx={{ flex: "1 1 auto" }} />
+                    {activeStep < steps.length - 1 ? (
+                      <Button
+                        variant="contained"
+                        onClick={handleNext}
+                        sx={{
+                          background:
+                            "linear-gradient(45deg, #1976d2, #42a5f5)",
+                        }}
+                      >
+                        Next
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={isSubmitting}
+                        sx={{
+                          background:
+                            "linear-gradient(45deg, #1976d2, #42a5f5)",
+                        }}
+                      >
+                        {isSubmitting ? "Registering..." : "Register"}
+                      </Button>
+                    )}
                   </Box>
-                  <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    disabled={isSubmitting}
-                    sx={{
-                      mt: 3,
-                      py: 1.5,
-                      borderRadius: 2,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      '&:hover': { boxShadow: '0 6px 16px rgba(0,0,0,0.2)' }
-                    }}
-                  >
-                    {isSubmitting ? 'Registering...' : 'Register'}
-                  </Button>
-                  <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Link component={RouterLink} to="/login" variant="body2">
+                  <Box sx={{ mt: 3, textAlign: "center" }}>
+                    <Link
+                      component={RouterLink}
+                      to="/login"
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       Already have an account? Login
                     </Link>
                   </Box>

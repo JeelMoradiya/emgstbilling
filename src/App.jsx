@@ -2,6 +2,8 @@
 import { useState } from 'react'; // Add this import
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
@@ -56,10 +58,12 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <ToastContainer position="top-right" autoClose={2000} />
       <CssBaseline />
       <AuthProvider>
         <Router>
           <Routes>
+          
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

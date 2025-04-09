@@ -6,9 +6,10 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   updatePassword,
-  onAuthStateChanged
+  onAuthStateChanged,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -33,11 +34,11 @@ export const AuthProvider = ({ children }) => {
         fullName: userData.fullName,
         email: userData.email,
         mobileNo: userData.mobileNo || '',
-        address: userData.address || '',
+        address: userData.address || {},
         gstNo: userData.gstNo || '',
         gstOwnerName: userData.gstOwnerName || '',
         companyName: userData.companyName || '',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
       
       await setDoc(doc(db, "users", user.uid), profileData);
@@ -110,6 +111,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      setError(null);
+      const user = auth.currentUser;
+      const userRef = doc(db, "users", user.uid);
+
+      // Delete user data from Firestore
+      await deleteDoc(userRef);
+      // Delete user from Firebase Authentication
+      await deleteUser(user);
+      
+      setUserProfile(null);
+      setCurrentUser(null);
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
   const fetchUserProfile = async (userId) => {
     try {
       setError(null);
@@ -152,8 +172,9 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     changePassword,
     updateUserProfile,
+    deleteAccount,
     loading,
-    error
+    error,
   };
 
   return (

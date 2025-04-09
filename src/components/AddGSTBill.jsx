@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { format } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Container,
   Paper,
@@ -24,7 +25,7 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Box
+  Box,
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 
@@ -33,32 +34,28 @@ const AddGSTBill = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [items, setItems] = useState([{ name: '', hsn: '', quantity: 1, price: 0 }]);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const fetchParties = async () => {
-      const querySnapshot = await getDocs(collection(db, 'parties'));
-      const partiesData = querySnapshot.docs.map(doc => ({
+      if (!currentUser) return;
+      const q = query(collection(db, 'parties'), where('createdBy', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      const partiesData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setParties(partiesData);
     };
-
     fetchParties();
-  }, []);
+  }, [currentUser]);
 
   const calculateTotals = (values) => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
     const cgst = subtotal * (values.gstRate / 100 / 2);
     const sgst = subtotal * (values.gstRate / 100 / 2);
     const total = subtotal + cgst + sgst;
-    
-    return {
-      subtotal,
-      cgst,
-      sgst,
-      total
-    };
+    return { subtotal, cgst, sgst, total };
   };
 
   const formik = useFormik({
@@ -82,9 +79,8 @@ const AddGSTBill = () => {
       setSuccess(false);
       try {
         const { subtotal, cgst, sgst, total } = calculateTotals(values);
-        
-        const selectedParty = parties.find(p => p.id === values.partyId);
-        
+        const selectedParty = parties.find((p) => p.id === values.partyId);
+
         await addDoc(collection(db, 'bills'), {
           ...values,
           items,
@@ -94,9 +90,12 @@ const AddGSTBill = () => {
           total,
           partyDetails: selectedParty,
           createdAt: new Date().toISOString(),
+          createdBy: currentUser.uid,
         });
-        
+
         setSuccess(true);
+        formik.resetForm();
+        setItems([{ name: '', hsn: '', quantity: 1, price: 0 }]);
       } catch (error) {
         console.error('Error generating bill: ', error);
       } finally {
@@ -124,8 +123,7 @@ const AddGSTBill = () => {
   const { subtotal, cgst, sgst, total } = calculateTotals(formik.values);
 
   const numberToWords = (num) => {
-    // Implement number to words conversion logic here
-    return "Rupees " + num.toFixed(2) + " only";
+    return 'Rupees ' + num.toFixed(2) + ' only'; // Simplified; add proper conversion logic if needed
   };
 
   return (
@@ -134,7 +132,7 @@ const AddGSTBill = () => {
         <Typography variant="h5" gutterBottom>
           Generate GST Bill
         </Typography>
-        
+
         {success && (
           <Alert severity="success" sx={{ mb: 3 }}>
             GST Bill generated successfully!
@@ -187,9 +185,9 @@ const AddGSTBill = () => {
                   error={formik.touched.partyId && Boolean(formik.errors.partyId)}
                 >
                   <MenuItem value="">Select Party</MenuItem>
-                  {parties.map(party => (
+                  {parties.map((party) => (
                     <MenuItem key={party.id} value={party.id}>
-                      {party.partyName} ({party.gstNo})
+                      {party.companyName} ({party.gstNo})
                     </MenuItem>
                   ))}
                 </Select>
@@ -309,11 +307,7 @@ const AddGSTBill = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleAddItem}
-              >
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddItem}>
                 Add Item
               </Button>
             </Grid>
