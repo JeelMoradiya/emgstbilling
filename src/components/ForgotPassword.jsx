@@ -1,4 +1,3 @@
-// src/components/ForgotPassword.jsx
 import { 
   Container, 
   Box, 
@@ -7,7 +6,9 @@ import {
   Button, 
   Link, 
   Card, 
-  CardContent 
+  CardContent,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -25,6 +26,8 @@ const ForgotPasswordSchema = Yup.object().shape({
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
@@ -39,23 +42,27 @@ const ForgotPassword = () => {
 
   return (
     <Container 
+      maxWidth={false}
       sx={{ 
-        height: '100vh', 
+        minWidth: '100vw',
+        minHeight: '100vh', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        m: 0,
+        p: 0
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        style={{ width: '100%' }}
+        style={{ width: '100%', maxWidth: isMobile ? '90%' : 450 }}
       >
         <Card
           sx={{
-            maxWidth: 450,
+            width: '100%',
             mx: 'auto',
             boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
             borderRadius: 3,
@@ -66,10 +73,10 @@ const ForgotPassword = () => {
             },
           }}
         >
-          <CardContent sx={{ p: 5 }}>
+          <CardContent sx={{ p: isMobile ? 3 : 5 }}>
             <Typography 
-              variant="h4" 
-              align="center" 
+              variant={isMobile ? 'h5' : 'h4'} 
+              align='center' 
               sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
             >
               Reset Password
@@ -83,32 +90,33 @@ const ForgotPassword = () => {
                 <Form>
                   <TextField
                     fullWidth
-                    margin="normal"
-                    name="email"
-                    label="Email"
+                    margin='normal'
+                    name='email'
+                    label='Email'
                     value={values.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.email && Boolean(errors.email)}
                     helperText={touched.email && errors.email}
-                    variant="outlined"
+                    variant='outlined'
                     sx={{ mb: 4 }}
                   />
                   <Button
-                    type="submit"
+                    type='submit'
                     fullWidth
-                    variant="contained"
+                    variant='contained'
                     disabled={isSubmitting}
                     sx={{
                       py: 1.5,
                       borderRadius: 2,
                       background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                      fontSize: isMobile ? '0.9rem' : '1rem',
                     }}
                   >
                     {isSubmitting ? 'Sending...' : 'Reset Password'}
                   </Button>
                   <Box sx={{ mt: 3, textAlign: 'center' }}>
-                    <Link component={RouterLink} to="/login" variant="body2" color="text.secondary">
+                    <Link component={RouterLink} to='/login' variant='body2' color='text.secondary'>
                       Back to Login
                     </Link>
                   </Box>

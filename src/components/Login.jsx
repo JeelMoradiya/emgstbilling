@@ -1,5 +1,4 @@
-// src/components/Login.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Container, 
   Box, 
@@ -10,7 +9,11 @@ import {
   InputAdornment, 
   Link, 
   Card, 
-  CardContent 
+  CardContent,
+  FormControlLabel,
+  Checkbox,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -36,16 +39,52 @@ const LoginSchema = Yup.object().shape({
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Get initial values from localStorage or cookies
+  const getInitialValues = () => {
+    const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
+                      JSON.parse(Cookies.get('loginData') || '{}');
+    return {
+      email: storedData.email || '',
+      password: storedData.password || '',
+    };
+  };
+
+  // Check if "Remember Me" should be checked on mount
+  useEffect(() => {
+    const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
+                      JSON.parse(Cookies.get('loginData') || '{}');
+    if (storedData.rememberMe && storedData.timestamp) {
+      // Check if data is less than 2 hours old
+      const twoHoursInMs = 2 * 60 * 60 * 1000;
+      if (Date.now() - storedData.timestamp < twoHoursInMs) {
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       await login(values.email, values.password);
-      // Store login data in localStorage and cookies for 1 day
-      const loginData = { email: values.email, timestamp: Date.now() };
-      localStorage.setItem('loginData', JSON.stringify(loginData));
-      Cookies.set('loginData', JSON.stringify(loginData), { expires: 1 }); // 1 day expiry
+      if (rememberMe) {
+        const loginData = { 
+          email: values.email,
+          password: values.password,
+          timestamp: Date.now(),
+          rememberMe: true 
+        };
+        localStorage.setItem('loginData', JSON.stringify(loginData));
+        // Set cookie to expire in 2 hours (2/24 of a day)
+        Cookies.set('loginData', JSON.stringify(loginData), { expires: 2 / 24 });
+      } else {
+        localStorage.removeItem('loginData');
+        Cookies.remove('loginData');
+      }
       toast.success('Login successful!', { autoClose: 2000 });
       setTimeout(() => navigate('/'), 2000);
     } catch (error) {
@@ -55,24 +94,28 @@ const Login = () => {
   };
 
   return (
-    <Container 
-      sx={{ 
-        height: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
+    <Container
+      maxWidth={false}
+      sx={{
+        minWidth: '100vw',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        m: 0,
+        p: 0
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        
+        style={{ width: '100%', maxWidth: isMobile ? '90%' : 450 }}
       >
         <Card
           sx={{
-            maxWidth: 450,
+            width: '100%',
             mx: 'auto',
             boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
             borderRadius: 3,
@@ -83,78 +126,116 @@ const Login = () => {
             },
           }}
         >
-          <CardContent sx={{ p: 5 }}>
-            <Typography 
-              variant="h4" 
-              align="center" 
+          <CardContent sx={{ p: isMobile ? 3 : 5 }}>
+            <Typography
+              variant={isMobile ? 'h5' : 'h4'}
+              align='center'
               sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
             >
               Login
             </Typography>
             <Formik
-              initialValues={{ email: '', password: '' }}
+              initialValues={getInitialValues()}
               validationSchema={LoginSchema}
               onSubmit={handleSubmit}
             >
-              {({ errors, touched, handleChange, handleBlur, values, isSubmitting }) => (
+              {({
+                errors,
+                touched,
+                handleChange,
+                handleBlur,
+                values,
+                isSubmitting,
+              }) => (
                 <Form>
                   <TextField
                     fullWidth
-                    margin="normal"
-                    name="email"
-                    label="Email or Mobile"
+                    margin='normal'
+                    name='email'
+                    label='Email'
                     value={values.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.email && Boolean(errors.email)}
                     helperText={touched.email && errors.email}
-                    variant="outlined"
+                    variant='outlined'
                     sx={{ mb: 3 }}
                   />
                   <TextField
                     fullWidth
-                    margin="normal"
-                    name="password"
-                    label="Password"
+                    margin='normal'
+                    name='password'
+                    label='Password'
                     type={showPassword ? 'text' : 'password'}
                     value={values.password}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.password && Boolean(errors.password)}
                     helperText={touched.password && errors.password}
-                    variant="outlined"
+                    variant='outlined'
                     InputProps={{
                       endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton 
-                            onClick={() => setShowPassword(!showPassword)} 
-                            edge="end"
+                        <InputAdornment position='end'>
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge='end'
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
                         </InputAdornment>
                       ),
                     }}
-                    sx={{ mb: 4 }}
+                    sx={{ mb: 2 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        color='primary'
+                      />
+                    }
+                    label='Remember Me'
+                    sx={{ mb: 2 }}
                   />
                   <Button
-                    type="submit"
+                    type='submit'
                     fullWidth
-                    variant="contained"
+                    variant='contained'
                     disabled={isSubmitting}
                     sx={{
                       py: 1.5,
                       borderRadius: 2,
                       background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                      fontSize: isMobile ? '0.9rem' : '1rem',
                     }}
                   >
                     {isSubmitting ? 'Logging in...' : 'Login'}
                   </Button>
-                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-                    <Link component={RouterLink} to="/forgot-password" variant="body2" color="text.secondary">
+                  <Box
+                    sx={{
+                      mt: 3,
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: isMobile ? 2 : 0
+                    }}
+                  >
+                    <Link
+                      component={RouterLink}
+                      to='/forgot-password'
+                      variant='body2'
+                      color='text.secondary'
+                    >
                       Forgot Password?
                     </Link>
-                    <Link component={RouterLink} to="/register" variant="body2" color="text.secondary">
+                    <Link
+                      component={RouterLink}
+                      to='/register'
+                      variant='body2'
+                      color='text.secondary'
+                    >
                       Create Account
                     </Link>
                   </Box>

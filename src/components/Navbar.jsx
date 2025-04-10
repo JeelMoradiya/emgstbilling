@@ -81,15 +81,15 @@ const Navbar = () => {
             to="/"
             sx={{
               flexGrow: 1,
-              textDecoration: 'none',
-              color: 'inherit',
-              fontWeight: 'bold'
+              textDecoration: "none",
+              color: "inherit",
+              fontWeight: "bold",
             }}
           >
-            GST Billing System
+            EMGST Billing
           </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <Button
               color="inherit"
               component={RouterLink}
@@ -106,22 +106,22 @@ const Navbar = () => {
             >
               All Parties
             </Button>
-            
+
             <Box sx={{ ml: 2 }}>
               <IconButton
                 onClick={handleMenu}
                 size="medium"
-                aria-controls={open ? 'account-menu' : undefined}
+                aria-controls={open ? "account-menu" : undefined}
                 aria-haspopup="true"
-                aria-expanded={open ? 'true' : undefined}
+                aria-expanded={open ? "true" : undefined}
               >
                 <Avatar
                   sx={{
                     width: 40,
                     height: 40,
                     bgcolor: theme.palette.secondary.main,
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold'
+                    fontSize: "1.2rem",
+                    fontWeight: "bold",
                   }}
                 >
                   {getAvatarText()}
@@ -136,11 +136,11 @@ const Navbar = () => {
                 PaperProps={{
                   elevation: 5,
                   sx: {
-                    overflow: 'visible',
-                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
+                    overflow: "visible",
+                    filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.15))",
                     mt: 1.5,
                     minWidth: 200,
-                    '& .MuiAvatar-root': {
+                    "& .MuiAvatar-root": {
                       width: 32,
                       height: 32,
                       ml: -0.5,
@@ -148,15 +148,17 @@ const Navbar = () => {
                     },
                   },
                 }}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
               >
                 <Box sx={{ px: 2, py: 1 }}>
                   <Typography variant="subtitle1" fontWeight="bold">
-                    {userProfile?.fullName || currentUser?.displayName || 'User'}
+                    {userProfile?.fullName ||
+                      currentUser?.displayName ||
+                      "User"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {userProfile?.companyName || 'No company'}
+                    {userProfile?.companyName || "No company"}
                   </Typography>
                 </Box>
                 <Divider />
