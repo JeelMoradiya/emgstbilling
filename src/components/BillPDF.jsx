@@ -4,37 +4,37 @@ import { numberToWords } from "../utils";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 60,
+    padding: 40,
     fontFamily: "Helvetica",
-    fontSize: 12,
-    color: "#212121",
-    backgroundColor: "#fafafa",
+    fontSize: 11,
+    color: "#333333",
+    backgroundColor: "#ffffff",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 35,
-    borderBottom: "2px solid #0288d1",
-    paddingBottom: 12,
+    marginBottom: 30,
+    borderBottom: "2px solid #1976d2",
+    paddingBottom: 10,
   },
   title: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#0288d1",
-    letterSpacing: 1,
+    color: "#1976d2",
+    marginBottom: 5,
   },
   subtitle: {
-    fontSize: 10,
-    color: "#757575",
-    marginTop: 4,
+    fontSize: 9,
+    color: "#666666",
+    marginTop: 3,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 20,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   table: {
     display: "table",
@@ -51,81 +51,96 @@ const styles = StyleSheet.create({
   },
   tableRowAlternate: {
     flexDirection: "row",
-    backgroundColor: "#e3f2fd",
+    backgroundColor: "#f5f5f5",
   },
   tableColHeader: {
     width: "16.66%",
     borderStyle: "solid",
     borderWidth: 1,
     borderColor: "#e0e0e0",
-    backgroundColor: "#0288d1",
-    padding: 5,
+    backgroundColor: "#1976d2",
+    padding: 6,
   },
   tableCol: {
     width: "16.66%",
     borderStyle: "solid",
     borderWidth: 1,
     borderColor: "#e0e0e0",
-    padding: 5,
+    padding: 6,
   },
   tableCellHeader: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "bold",
     color: "#ffffff",
     textAlign: "center",
   },
   tableCell: {
-    fontSize: 10,
-    color: "#424242",
+    fontSize: 9,
+    color: "#333333",
     textAlign: "center",
+    flexWrap: "wrap",
+    // Remove any potential superscript or special formatting
+    verticalAlign: "middle",
   },
   amountSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 40,
-    paddingTop: 20,
-    borderTop: "2px dashed #0288d1",
+    marginTop: 20,
+    paddingTop: 15,
+    borderTop: "1px dashed #1976d2",
   },
   amountBox: {
     width: "48%",
   },
+  notesBox: {
+    backgroundColor: "#f5f5f5",
+    padding: 10,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 12,
+    padding: 10,
     backgroundColor: "#e3f2fd",
     borderRadius: 4,
-    border: "1px solid #0288d1",
+    border: "1px solid #1976d2",
+    marginTop: 10,
   },
   signatureSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 60,
+    marginTop: 40,
   },
   signatureBox: {
     width: "48%",
     textAlign: "center",
-    borderTop: "1px solid #0288d1",
-    paddingTop: 12,
-    color: "#424242",
+    borderTop: "1px solid #1976d2",
+    paddingTop: 10,
+    color: "#333333",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 10,
+    left: 35,
+    right: 35,
+    textAlign: "right",
+    fontSize: 9,
+    color: "#666666",
+    borderTop: "2px solid #1976d2",
+    paddingTop: 5,
   },
 });
 
 const formatAddress = (address) => {
   if (!address || typeof address !== "object") return "N/A";
   const { plotHouseNo, line1, area, landmark, city, state, pincode } = address;
-  return [
-    plotHouseNo,
-    line1,
-    area,
-    landmark,
-    city,
-    state,
-    pincode,
-  ]
+  return [plotHouseNo, line1, area, landmark, city, state, pincode]
     .filter(Boolean)
     .join(", ");
 };
+
+
 
 const BillPDF = ({ bill = {}, user = {} }) => {
   const safeBill = {
@@ -136,10 +151,14 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     status: bill.status || "N/A",
     items: bill.items || [],
     subtotal: bill.subtotal || 0,
+    discount: bill.discount || 0,
+    discountAmount: bill.discountAmount || 0,
+    taxableAmount: bill.taxableAmount || 0,
     gstRate: bill.gstRate || 0,
     cgst: bill.cgst || 0,
     sgst: bill.sgst || 0,
     total: bill.total || 0,
+    notes: bill.notes || "",
   };
 
   const safeUser = {
@@ -158,16 +177,24 @@ const BillPDF = ({ bill = {}, user = {} }) => {
             <Text style={styles.subtitle}>
               Address: {formatAddress(safeUser.address)}
             </Text>
-            <Text style={styles.subtitle}>
-              Generated on: {format(new Date(), "dd/MM/yyyy")}
-            </Text>
           </View>
           <View>
-            <Text style={{ fontSize: 12, color: "#424242" }}>
-              Invoice #: {safeBill.billNo}
+            <Text
+              style={{
+                fontWeight: "bold",
+                fontSize: 13,
+                color: "#1976d2",
+                marginTop: 2,
+                marginBottom: 3,
+              }}
+            >
+              TAX INVOICE
             </Text>
-            <Text style={{ fontSize: 12, color: "#424242" }}>
-              Date: {new Date(safeBill.date).toLocaleDateString()}
+            <Text style={{ fontSize: 11, color: "#333333" }}>
+              Invoice No.: {safeBill.billNo}
+            </Text>
+            <Text style={{ fontSize: 11, color: "#333333" }}>
+              Date: {format(new Date(safeBill.date), "dd-MM-yyyy")}
             </Text>
           </View>
         </View>
@@ -178,13 +205,13 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               <Text
                 style={{
                   fontWeight: "bold",
-                  marginBottom: 6,
-                  color: "#0288d1",
+                  marginBottom: 5,
+                  color: "#1976d2",
                 }}
               >
                 Billed To:
               </Text>
-              <Text>Company Name: {safeBill.partyDetails.companyName || "N/A"}</Text>
+              <Text>{safeBill.partyDetails.companyName || "N/A"}</Text>
               <Text>GSTIN: {safeBill.partyDetails.gstNo || "N/A"}</Text>
               <Text>Mobile: {safeBill.partyDetails.mobileNo || "N/A"}</Text>
               <Text>Address: {formatAddress(safeBill.partyDetails)}</Text>
@@ -193,8 +220,8 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               <Text
                 style={{
                   fontWeight: "bold",
-                  marginBottom: 6,
-                  color: "#0288d1",
+                  marginBottom: 5,
+                  color: "#1976d2",
                 }}
               >
                 Payment Details:
@@ -247,12 +274,12 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  ₹{(item.price || 0).toFixed(2)}
+                  {item.price || 0}
                 </Text>
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  ₹{((item.quantity || 0) * (item.price || 0)).toFixed(2)}
+                  {(item.quantity || 0) * (item.price || 0)}
                 </Text>
               </View>
             </View>
@@ -261,32 +288,50 @@ const BillPDF = ({ bill = {}, user = {} }) => {
 
         <View style={styles.amountSection}>
           <View style={styles.amountBox}>
-            <Text style={{ fontWeight: "bold", color: "#0288d1" }}>
+            {safeBill.notes && (
+              <View style={styles.notesBox}>
+                <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+                  Additional Notes:
+                </Text>
+                <Text style={{ fontSize: 9, marginTop: 5 }}>
+                  {safeBill.notes}
+                </Text>
+              </View>
+            )}
+            <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
               Amount in Words:
             </Text>
-            <Text style={{ fontSize: 11, marginTop: 6, color: "#424242" }}>
+            <Text style={{ fontSize: 9, marginTop: 5 }}>
               {numberToWords(safeBill.total)}
             </Text>
           </View>
           <View style={styles.amountBox}>
             <View style={styles.row}>
               <Text>Subtotal:</Text>
-              <Text>₹{safeBill.subtotal.toFixed(2)}</Text>
+              <Text>{safeBill.subtotal.toFixed(2)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text>Discount ({safeBill.discount}%):</Text>
+              <Text>{safeBill.discountAmount.toFixed(2)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text>Taxable Amount:</Text>
+              <Text>{safeBill.taxableAmount.toFixed(2)}</Text>
             </View>
             <View style={styles.row}>
               <Text>CGST ({safeBill.gstRate / 2}%):</Text>
-              <Text>₹{safeBill.cgst.toFixed(2)}</Text>
+              <Text>{safeBill.cgst.toFixed(2)}</Text>
             </View>
             <View style={styles.row}>
               <Text>SGST ({safeBill.gstRate / 2}%):</Text>
-              <Text>₹{safeBill.sgst.toFixed(2)}</Text>
+              <Text>{safeBill.sgst.toFixed(2)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={{ fontWeight: "bold", color: "#0288d1" }}>
+              <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
                 Total:
               </Text>
-              <Text style={{ fontWeight: "bold", color: "#0288d1" }}>
-                ₹{safeBill.total.toFixed(2)}
+              <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+                {safeBill.total.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -294,11 +339,18 @@ const BillPDF = ({ bill = {}, user = {} }) => {
 
         <View style={styles.signatureSection}>
           <View style={styles.signatureBox}>
-            <Text style={{ fontSize: 11 }}>Receiver's Signature</Text>
+            <Text style={{ fontSize: 9 }}>Receiver's Signature</Text>
           </View>
           <View style={styles.signatureBox}>
-            <Text style={{ fontSize: 11 }}>Authorized Signatory</Text>
+            <Text style={{ fontSize: 9 }}>
+              Authorized Signatory ({safeUser.companyName})
+            </Text>
           </View>
+        </View>
+        <View style={styles.footer}>
+          <Text style={styles.subtitle}>
+            Generated on: {format(new Date(), "dd-MM-yyyy")}
+          </Text>
         </View>
       </Page>
     </Document>

@@ -12,29 +12,19 @@ import {
   Snackbar,
   Avatar,
   useTheme,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  CircularProgress
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Save as SaveIcon,
-  Cancel as CancelIcon,
-  Delete as DeleteIcon,
+  Cancel as CancelIcon
 } from "@mui/icons-material";
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase";
-import { deleteUser } from "firebase/auth";
 
 const Profile = () => {
   const { currentUser, userProfile, updateUserProfile, loading } = useAuth();
   const theme = useTheme();
-  const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -55,22 +45,65 @@ const Profile = () => {
     },
   });
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  const cities = [
-    "Ahmedabad",
-    "Surat",
-    "Vadodara",
-    "Rajkot",
-    "Bhavnagar",
-    "Jamnagar",
-    "Gandhinagar",
-    "Junagadh",
-    "Anand",
-    "Nadiad",
-  ];
-  const states = ["Gujarat", "Maharashtra", "Delhi", "Karnataka", "Tamil Nadu"];
+  const stateCityMap = {
+    Gujarat: [
+      "Ahmedabad",
+      "Surat",
+      "Vadodara",
+      "Rajkot",
+      "Bhavnagar",
+      "Jamnagar",
+      "Gandhinagar",
+      "Junagadh",
+      "Anand",
+      "Nadiad",
+    ],
+    Maharashtra: [
+      "Mumbai",
+      "Pune",
+      "Nagpur",
+      "Nashik",
+      "Aurangabad",
+      "Solapur",
+      "Kolhapur",
+      "Thane",
+      "Navi Mumbai",
+      "Amravati",
+    ],
+    Delhi: ["New Delhi", "Delhi"],
+    Karnataka: [
+      "Bangalore",
+      "Mysore",
+      "Hubli",
+      "Mangalore",
+      "Belgaum",
+      "Gulbarga",
+      "Davanagere",
+      "Bellary",
+      "Bijapur",
+      "Shimoga",
+    ],
+    "Tamil Nadu": [
+      "Chennai",
+      "Coimbatore",
+      "Madurai",
+      "Tiruchirappalli",
+      "Salem",
+      "Tirunelveli",
+      "Erode",
+      "Vellore",
+      "Thoothukudi",
+      "Dindigul",
+    ],
+  };
+
+  const states = Object.keys(stateCityMap);
 
   useEffect(() => {
     if (userProfile) {
@@ -98,10 +131,17 @@ const Profile = () => {
     const { name, value } = e.target;
     if (name.includes("address.")) {
       const addressField = name.split(".")[1];
-      setFormData((prev) => ({
-        ...prev,
-        address: { ...prev.address, [addressField]: value },
-      }));
+      if (addressField === "state") {
+        setFormData((prev) => ({
+          ...prev,
+          address: { ...prev.address, state: value, city: "" },
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          address: { ...prev.address, [addressField]: value },
+        }));
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -186,7 +226,11 @@ const Profile = () => {
         address: formData.address,
       };
       await updateUserProfile(updatedData);
-      setSuccess(true);
+      setSnackbar({
+        open: true,
+        message: "Profile updated successfully!",
+        severity: "success",
+      });
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to update profile:", error);
@@ -194,20 +238,9 @@ const Profile = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    try {
-      await deleteUser(auth.currentUser);
-      navigate("/login");
-    } catch (error) {
-      console.error("Failed to delete account:", error);
-      setError("Failed to delete account. Please try again.");
-    }
-    setOpenDeleteDialog(false);
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
-
-  const handleCloseSnackbar = () => setSuccess(false);
-  const handleOpenDeleteDialog = () => setOpenDeleteDialog(true);
-  const handleCloseDeleteDialog = () => setOpenDeleteDialog(false);
 
   const getAvatarText = () => {
     if (formData.companyName)
@@ -219,8 +252,8 @@ const Profile = () => {
   if (loading || !currentUser) {
     return (
       <Container
-        maxWidth="md"
-        sx={{ mt: 4, display: "flex", justifyContent: "center" }}
+        maxWidth="lg"
+        sx={{ mt: 4, display: "flex", justifyContent: "center", bgcolor: 'white', minHeight: '100vh' }}
       >
         <CircularProgress />
       </Container>
@@ -228,19 +261,19 @@ const Profile = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4, bgcolor: 'white', minHeight: '100vh' }}>
       <Snackbar
-        open={success}
+        open={snackbar.open}
         autoHideDuration={4000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
         <Alert
           onClose={handleCloseSnackbar}
-          severity="success"
-          sx={{ width: "100%" }}
+          severity={snackbar.severity}
+          sx={{ width: "100%", fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
         >
-          Profile updated successfully!
+          {snackbar.message}
         </Alert>
       </Snackbar>
 
@@ -249,43 +282,80 @@ const Profile = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Paper elevation={4} sx={{ p: 4, borderRadius: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <Paper
+          elevation={4}
+          sx={{
+            p: { xs: 2, sm: 3, md: 4 },
+            borderRadius: 2,
+            bgcolor: 'white'
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "center", sm: "center" },
+              justifyContent: "flex-start",
+              mb: 4,
+              gap: 3,
+            }}
+          >
             <Avatar
               sx={{
-                width: 80,
-                height: 80,
-                bgcolor: theme.palette.primary.main,
-                fontSize: "2rem",
+                width: { xs: 64, sm: 80 },
+                height: { xs: 64, sm: 80 },
+                bgcolor: '#2c3e50',
+                fontSize: { xs: "1.75rem", sm: "2.25rem" },
                 fontWeight: "bold",
-                mr: 3,
               }}
             >
               {getAvatarText()}
             </Avatar>
-            <Box>
-              <Typography variant="h4" component="h1" gutterBottom>
-                My Profile
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                View and update your account information
+
+            <Box
+              sx={{
+                textAlign: { xs: "center", sm: "left" },
+                maxWidth: "100%",
+              }}
+            >
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontSize: { xs: "1.75rem", sm: "2.25rem", md: "2.75rem" },
+                  fontWeight: 500,
+                  color: '#2c3e50',
+                  lineHeight: 1.3,
+                }}
+              >
+                {formData.companyName}
               </Typography>
             </Box>
           </Box>
 
-          <Divider sx={{ mb: 4 }} />
+          <Divider sx={{ mb: 4, border: "2px solid #2c3e50" }} />
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert
+              severity="error"
+              sx={{
+                mb: 3,
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
               {error}
             </Alert>
           )}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Typography variant="h6" gutterBottom>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+            >
               User Information
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -295,6 +365,13 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -305,6 +382,13 @@ const Profile = () => {
                   value={formData.email}
                   disabled={true}
                   helperText={isEditing ? "Email cannot be changed" : ""}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -315,14 +399,25 @@ const Profile = () => {
                   value={formData.mobileNo}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
             </Grid>
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mt: 4, fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+            >
               GST Information
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -331,6 +426,13 @@ const Profile = () => {
                   value={formData.companyName}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -341,6 +443,13 @@ const Profile = () => {
                   value={formData.gstNo}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -351,14 +460,25 @@ const Profile = () => {
                   value={formData.gstOwnerName}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
             </Grid>
 
-            <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ mt: 4, fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+            >
               Address Information
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -368,6 +488,13 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -379,6 +506,13 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -390,6 +524,13 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -400,27 +541,14 @@ const Profile = () => {
                   value={formData.address.landmark}
                   onChange={handleChange}
                   disabled={!isEditing}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  name="address.city"
-                  select
-                  SelectProps={{ native: true }}
-                  value={formData.address.city}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  required
-                >
-                  <option value="">Select City</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </TextField>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -433,6 +561,13 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 >
                   <option value="">Select State</option>
                   {states.map((state) => (
@@ -445,44 +580,91 @@ const Profile = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  label="City"
+                  name="address.city"
+                  select
+                  SelectProps={{ native: true }}
+                  value={formData.address.city}
+                  onChange={handleChange}
+                  disabled={!isEditing || !formData.address.state}
+                  required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
+                >
+                  <option value="">Select City</option>
+                  {formData.address.state &&
+                    stateCityMap[formData.address.state].map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
+                    ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
                   label="Pincode"
                   name="address.pincode"
                   value={formData.address.pincode}
                   onChange={handleChange}
                   disabled={!isEditing}
                   required
+                  variant="outlined"
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
+                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                  }}
                 />
               </Grid>
             </Grid>
 
             <Box
-              sx={{ mt: 4, display: "flex", justifyContent: "space-between" }}
+              sx={{
+                mt: 4,
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                justifyContent: "flex-start",
+                gap: 2,
+              }}
             >
               {!isEditing ? (
-                <>
-                  <Button
-                    variant="contained"
-                    startIcon={<EditIcon />}
-                    onClick={handleEdit}
-                  >
-                    Edit Profile
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    onClick={handleOpenDeleteDialog}
-                  >
-                    Delete Account
-                  </Button>
-                </>
+                <Button
+                  variant="contained"
+                  startIcon={<EditIcon />}
+                  onClick={handleEdit}
+                  sx={{
+                    width: { xs: "100%", sm: "auto" },
+                    fontSize: { xs: "0.875rem", sm: "1rem" },
+                    py: 1.5,
+                    bgcolor: '#2c3e50',
+                    color: 'white',
+                    '&:hover': { bgcolor: '#34495e' },
+                    borderRadius: 1
+                  }}
+                >
+                  Edit Profile
+                </Button>
               ) : (
                 <>
                   <Button
                     variant="outlined"
                     startIcon={<CancelIcon />}
                     onClick={handleCancel}
-                    sx={{ mr: 2 }}
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                      py: 1.5,
+                      borderRadius: 1,
+                      color: '#2c3e50',
+                      borderColor: '#2c3e50'
+                    }}
                   >
                     Cancel
                   </Button>
@@ -490,6 +672,15 @@ const Profile = () => {
                     type="submit"
                     variant="contained"
                     startIcon={<SaveIcon />}
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                      py: 1.5,
+                      bgcolor: '#2c3e50',
+                      color: 'white',
+                      '&:hover': { bgcolor: '#34495e' },
+                      borderRadius: 1
+                    }}
                   >
                     Save Changes
                   </Button>
@@ -499,22 +690,6 @@ const Profile = () => {
           </Box>
         </Paper>
       </motion.div>
-
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Delete Account</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete your account? This action cannot be
-            undone, and all your data will be permanently removed.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
-          <Button onClick={handleDeleteAccount} color="error">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

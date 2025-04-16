@@ -12,8 +12,7 @@ import {
   CardContent,
   FormControlLabel,
   Checkbox,
-  useMediaQuery,
-  useTheme
+  useMediaQuery
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -42,10 +41,8 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery('(max-width:600px)');
 
-  // Get initial values from localStorage or cookies
   const getInitialValues = () => {
     const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
                       JSON.parse(Cookies.get('loginData') || '{}');
@@ -55,14 +52,12 @@ const Login = () => {
     };
   };
 
-  // Check if "Remember Me" should be checked on mount
   useEffect(() => {
     const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
                       JSON.parse(Cookies.get('loginData') || '{}');
     if (storedData.rememberMe && storedData.timestamp) {
-      // Check if data is less than 2 hours old
-      const twoHoursInMs = 2 * 60 * 60 * 1000;
-      if (Date.now() - storedData.timestamp < twoHoursInMs) {
+      const oneHourInMs = 1 * 60 * 60 * 1000;
+      if (Date.now() - storedData.timestamp < oneHourInMs) {
         setRememberMe(true);
       }
     }
@@ -79,8 +74,7 @@ const Login = () => {
           rememberMe: true 
         };
         localStorage.setItem('loginData', JSON.stringify(loginData));
-        // Set cookie to expire in 2 hours (2/24 of a day)
-        Cookies.set('loginData', JSON.stringify(loginData), { expires: 2 / 24 });
+        Cookies.set('loginData', JSON.stringify(loginData), { expires: 1 });
       } else {
         localStorage.removeItem('loginData');
         Cookies.remove('loginData');
@@ -95,14 +89,13 @@ const Login = () => {
 
   return (
     <Container
-      maxWidth={false}
       sx={{
         minWidth: '100vw',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        background: '#f5f7fa',
         m: 0,
         p: 0
       }}
@@ -110,27 +103,22 @@ const Login = () => {
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        style={{ width: '100%', maxWidth: isMobile ? '90%' : 450 }}
+        transition={{ duration: 0.6 }}
+        style={{ width: '100%', maxWidth: isMobile ? '90%' : '400px' }}
       >
         <Card
           sx={{
             width: '100%',
-            mx: 'auto',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
-            borderRadius: 3,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+            borderRadius: 2,
             bgcolor: 'white',
-            overflow: 'hidden',
-            '&:hover': {
-              boxShadow: '0 14px 40px rgba(0, 0, 0, 0.2)',
-            },
           }}
         >
-          <CardContent sx={{ p: isMobile ? 3 : 5 }}>
+          <CardContent sx={{ p: isMobile ? 3 : 4 }}>
             <Typography
               variant={isMobile ? 'h5' : 'h4'}
               align='center'
-              sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
+              sx={{ mb: 3, fontWeight: 'bold', color: '#2c3e50' }}
             >
               Login
             </Typography>
@@ -152,14 +140,14 @@ const Login = () => {
                     fullWidth
                     margin='normal'
                     name='email'
-                    label='Email'
+                    label='Email or Mobile'
                     value={values.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.email && Boolean(errors.email)}
                     helperText={touched.email && errors.email}
                     variant='outlined'
-                    sx={{ mb: 3 }}
+                    sx={{ mb: 2, '& .MuiInputLabel-root': { color: '#2c3e50' } }}
                   />
                   <TextField
                     fullWidth
@@ -185,18 +173,18 @@ const Login = () => {
                         </InputAdornment>
                       ),
                     }}
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2, '& .MuiInputLabel-root': { color: '#2c3e50' } }}
                   />
                   <FormControlLabel
                     control={
                       <Checkbox
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
-                        color='primary'
+                        sx={{ color: '#2c3e50' }}
                       />
                     }
                     label='Remember Me'
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2, color: '#2c3e50' }}
                   />
                   <Button
                     type='submit'
@@ -205,8 +193,10 @@ const Login = () => {
                     disabled={isSubmitting}
                     sx={{
                       py: 1.5,
-                      borderRadius: 2,
-                      background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                      borderRadius: 1,
+                      bgcolor: '#2c3e50',
+                      color: 'white',
+                      '&:hover': { bgcolor: '#34495e' },
                       fontSize: isMobile ? '0.9rem' : '1rem',
                     }}
                   >
@@ -214,19 +204,20 @@ const Login = () => {
                   </Button>
                   <Box
                     sx={{
-                      mt: 3,
+                      mt: 2,
                       display: 'flex',
                       flexDirection: isMobile ? 'column' : 'row',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      gap: isMobile ? 2 : 0
+                      gap: isMobile ? 1 : 0,
+                      color: '#2c3e50',
                     }}
                   >
                     <Link
                       component={RouterLink}
                       to='/forgot-password'
                       variant='body2'
-                      color='text.secondary'
+                      sx={{ color: '#2c3e50' }}
                     >
                       Forgot Password?
                     </Link>
@@ -234,7 +225,7 @@ const Login = () => {
                       component={RouterLink}
                       to='/register'
                       variant='body2'
-                      color='text.secondary'
+                      sx={{ color: '#2c3e50' }}
                     >
                       Create Account
                     </Link>

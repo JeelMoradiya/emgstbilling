@@ -7,8 +7,7 @@ import {
   Link, 
   Card, 
   CardContent,
-  useMediaQuery,
-  useTheme
+  useMediaQuery
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -26,8 +25,7 @@ const ForgotPasswordSchema = Yup.object().shape({
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery('(max-width:600px)');
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
@@ -42,14 +40,13 @@ const ForgotPassword = () => {
 
   return (
     <Container 
-      maxWidth={false}
       sx={{ 
         minWidth: '100vw',
         minHeight: '100vh', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        background: '#f5f7fa',
         m: 0,
         p: 0
       }}
@@ -57,27 +54,22 @@ const ForgotPassword = () => {
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        style={{ width: '100%', maxWidth: isMobile ? '90%' : 450 }}
+        transition={{ duration: 0.6 }}
+        style={{ width: '100%', maxWidth: isMobile ? '90%' : '400px' }}
       >
         <Card
           sx={{
             width: '100%',
-            mx: 'auto',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
-            borderRadius: 3,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+            borderRadius: 2,
             bgcolor: 'white',
-            overflow: 'hidden',
-            '&:hover': {
-              boxShadow: '0 14px 40px rgba(0, 0, 0, 0.2)',
-            },
           }}
         >
-          <CardContent sx={{ p: isMobile ? 3 : 5 }}>
+          <CardContent sx={{ p: isMobile ? 3 : 4 }}>
             <Typography 
               variant={isMobile ? 'h5' : 'h4'} 
               align='center' 
-              sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
+              sx={{ mb: 3, fontWeight: 'bold', color: '#2c3e50' }}
             >
               Reset Password
             </Typography>
@@ -99,7 +91,7 @@ const ForgotPassword = () => {
                     error={touched.email && Boolean(errors.email)}
                     helperText={touched.email && errors.email}
                     variant='outlined'
-                    sx={{ mb: 4 }}
+                    sx={{ mb: 3, '& .MuiInputLabel-root': { color: '#2c3e50' } }}
                   />
                   <Button
                     type='submit'
@@ -108,15 +100,22 @@ const ForgotPassword = () => {
                     disabled={isSubmitting}
                     sx={{
                       py: 1.5,
-                      borderRadius: 2,
-                      background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
+                      borderRadius: 1,
+                      bgcolor: '#2c3e50',
+                      color: 'white',
+                      '&:hover': { bgcolor: '#34495e' },
                       fontSize: isMobile ? '0.9rem' : '1rem',
                     }}
                   >
                     {isSubmitting ? 'Sending...' : 'Reset Password'}
                   </Button>
-                  <Box sx={{ mt: 3, textAlign: 'center' }}>
-                    <Link component={RouterLink} to='/login' variant='body2' color='text.secondary'>
+                  <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Link 
+                      component={RouterLink} 
+                      to='/login' 
+                      variant='body2' 
+                      sx={{ color: '#2c3e50' }}
+                    >
                       Back to Login
                     </Link>
                   </Box>

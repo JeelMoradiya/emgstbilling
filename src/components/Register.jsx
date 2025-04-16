@@ -14,8 +14,7 @@ import {
   Step,
   StepLabel,
   MenuItem,
-  useMediaQuery,
-  useTheme
+  useMediaQuery
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -68,15 +67,8 @@ const RegisterSchema = Yup.object().shape({
 
 const steps = ['User Information', 'GST Information', 'Address Information'];
 
-const Register = () => {
-  const [activeStep, setActiveStep] = useState(0);
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
-  const { register } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const cities = [
+const stateCityMapping = {
+  Gujarat: [
     'Ahmedabad',
     'Surat',
     'Vadodara',
@@ -87,8 +79,55 @@ const Register = () => {
     'Junagadh',
     'Anand',
     'Nadiad',
-  ];
-  const states = ['Gujarat', 'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu'];
+  ],
+  Maharashtra: [
+    'Mumbai',
+    'Pune',
+    'Nagpur',
+    'Thane',
+    'Nashik',
+    'Aurangabad',
+    'Solapur',
+    'Kolhapur',
+    'Amravati',
+    'Nanded',
+  ],
+  Delhi: ['New Delhi', 'Delhi'],
+  Karnataka: [
+    'Bangalore',
+    'Mysore',
+    'Hubli',
+    'Mangalore',
+    'Belgaum',
+    'Gulbarga',
+    'Davanagere',
+    'Bellary',
+    'Bijapur',
+    'Shimoga',
+  ],
+  'Tamil Nadu': [
+    'Chennai',
+    'Coimbatore',
+    'Madurai',
+    'Tiruchirappalli',
+    'Salem',
+    'Tirunelveli',
+    'Erode',
+    'Vellore',
+    'Thoothukudi',
+    'Dindigul',
+  ],
+};
+
+const Register = () => {
+  const [activeStep, setActiveStep] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedState, setSelectedState] = useState('');
+  const navigate = useNavigate();
+  const { register } = useAuth();
+  const isMobile = useMediaQuery('(max-width:600px)');
+
+  const states = Object.keys(stateCityMapping);
 
   const handleSubmit = async (values) => {
     try {
@@ -300,16 +339,19 @@ const Register = () => {
               fullWidth
               margin='normal'
               select
-              name='city'
-              label='City'
-              value={values.city}
-              onChange={handleChange}
+              name='state'
+              label='State'
+              value={values.state}
+              onChange={(e) => {
+                setSelectedState(e.target.value);
+                handleChange(e);
+              }}
               onBlur={handleBlur}
-              error={touched.city && Boolean(errors.city)}
-              helperText={touched.city && errors.city}
+              error={touched.state && Boolean(errors.state)}
+              helperText={touched.state && errors.state}
               sx={{ flex: isMobile ? '1 1 100%' : '1 1 48%' }}
             >
-              {cities.map((option) => (
+              {states.map((option) => (
                 <MenuItem key={option} value={option}>
                   {option}
                 </MenuItem>
@@ -319,16 +361,17 @@ const Register = () => {
               fullWidth
               margin='normal'
               select
-              name='state'
-              label='State'
-              value={values.state}
+              name='city'
+              label='City'
+              value={values.city}
               onChange={handleChange}
               onBlur={handleBlur}
-              error={touched.state && Boolean(errors.state)}
-              helperText={touched.state && errors.state}
+              error={touched.city && Boolean(errors.city)}
+              helperText={touched.city && errors.city}
+              disabled={!selectedState}
               sx={{ flex: isMobile ? '1 1 100%' : '1 1 48%' }}
             >
-              {states.map((option) => (
+              {(stateCityMapping[selectedState] || []).map((option) => (
                 <MenuItem key={option} value={option}>
                   {option}
                 </MenuItem>
@@ -355,47 +398,44 @@ const Register = () => {
 
   return (
     <Container
-      maxWidth={false}
       sx={{
-        minWidth: '100vw',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        minWidth: "100vw",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f5f7fa",
         py: isMobile ? 2 : 4,
         m: 0,
-        p: 0
+        p: 0,
       }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        style={{ width: '100%', maxWidth: isMobile ? '90%' : 700 }}
+        transition={{ duration: 0.6 }}
+        style={{ width: "100%", maxWidth: isMobile ? "90%" : "600px" }}
       >
         <Card
           sx={{
-            width: '100%',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-            borderRadius: 4,
-            bgcolor: 'white',
-            overflow: 'hidden',
-            '&:hover': { boxShadow: '0 14px 40px rgba(0,0,0,0.2)' },
+            width: "100%",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+            borderRadius: 2,
+            bgcolor: "white",
           }}
         >
-          <CardContent sx={{ p: isMobile ? 3 : 5 }}>
+          <CardContent sx={{ p: isMobile ? 3 : 4 }}>
             <Typography
-              variant={isMobile ? 'h5' : 'h4'}
-              align='center'
-              sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}
+              variant={isMobile ? "h5" : "h4"}
+              align="center"
+              sx={{ mb: 3, fontWeight: "bold", color: "#2c3e50" }}
             >
               Create Your Account
             </Typography>
-            <Stepper 
-              activeStep={activeStep} 
-              sx={{ mb: 4 }}
-              orientation={isMobile ? 'vertical' : 'horizontal'}
+            <Stepper
+              activeStep={activeStep}
+              sx={{ mb: 3 }}
+              orientation={isMobile ? "vertical" : "horizontal"}
             >
               {steps.map((label) => (
                 <Step key={label}>
@@ -405,21 +445,21 @@ const Register = () => {
             </Stepper>
             <Formik
               initialValues={{
-                fullName: '',
-                email: '',
-                mobileNo: '',
-                password: '',
-                confirmPassword: '',
-                companyName: '',
-                gstOwnerName: '',
-                gstNo: '',
-                plotHouseNo: '',
-                line1: '',
-                area: '',
-                landmark: '',
-                city: '',
-                state: '',
-                pincode: '',
+                fullName: "",
+                email: "",
+                mobileNo: "",
+                password: "",
+                confirmPassword: "",
+                companyName: "",
+                gstOwnerName: "",
+                gstNo: "",
+                plotHouseNo: "",
+                line1: "",
+                area: "",
+                landmark: "",
+                city: "",
+                state: "",
+                pincode: "",
               }}
               validationSchema={RegisterSchema}
               onSubmit={handleSubmit}
@@ -440,52 +480,71 @@ const Register = () => {
                     handleBlur,
                     values,
                   })}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: isMobile ? 'column' : 'row', 
-                    pt: 3,
-                    gap: isMobile ? 2 : 0
-                  }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: isMobile ? "column" : "row",
+                      pt: 2,
+                      gap: isMobile ? 1 : 2,
+                    }}
+                  >
                     <Button
-                      color='inherit'
+                      color="inherit"
                       disabled={activeStep === 0}
                       onClick={handleBack}
-                      sx={{ mr: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}
+                      sx={{
+                        py: 1.5,
+                        borderRadius: 1,
+                        outline: "1px solid #2c3e50",
+                        color: "#2c3e50",
+                        fontSize: isMobile ? "0.9rem" : "1rem",
+                        width: isMobile ? "100%" : "auto",
+                      }}
                     >
                       Back
                     </Button>
-                    <Box sx={{ flex: isMobile ? '0' : '1 1 auto' }} />
+                    <Box sx={{ flex: isMobile ? "0" : "1 1 auto" }} />
                     {activeStep < steps.length - 1 ? (
                       <Button
-                        variant='contained'
+                        variant="contained"
                         onClick={handleNext}
                         sx={{
-                          background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-                          width: isMobile ? '100%' : 'auto'
+                          py: 1.5,
+                          borderRadius: 1,
+                          bgcolor: "#2c3e50",
+                          color: "white",
+                          "&:hover": { bgcolor: "#34495e" },
+                          fontSize: isMobile ? "0.9rem" : "1rem",
+                          width: isMobile ? "100%" : "auto",
                         }}
                       >
                         Next
                       </Button>
                     ) : (
                       <Button
-                        type='submit'
-                        variant='contained'
+                        type="submit"
+                        variant="contained"
                         disabled={isSubmitting}
                         sx={{
-                          background: 'linear-gradient(45deg, #1976d2, #42a5f5)',
-                          width: isMobile ? '100%' : 'auto'
+                          py: 1.5,
+                          borderRadius: 1,
+                          bgcolor: "#2c3e50",
+                          color: "white",
+                          "&:hover": { bgcolor: "#34495e" },
+                          fontSize: isMobile ? "0.9rem" : "1rem",
+                          width: isMobile ? "100%" : "auto",
                         }}
                       >
-                        {isSubmitting ? 'Registering...' : 'Register'}
+                        {isSubmitting ? "Registering..." : "Register"}
                       </Button>
                     )}
                   </Box>
-                  <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Box sx={{ mt: 2, textAlign: "center" }}>
                     <Link
                       component={RouterLink}
-                      to='/login'
-                      variant='body2'
-                      color='text.secondary'
+                      to="/login"
+                      variant="body2"
+                      sx={{ color: "#2c3e50" }}
                     >
                       Already have an account? Login
                     </Link>
@@ -500,4 +559,4 @@ const Register = () => {
   );
 };
 
-export default Register
+export default Register;

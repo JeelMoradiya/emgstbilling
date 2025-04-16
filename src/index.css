@@ -2,6 +2,59 @@
 
 body {
   font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Scrollbar Styles for Firefox */
+body {
+  scrollbar-width: thin;
+  scrollbar-color: #2c3e50 #dddddd;
+}
+
+/* Custom Scrollbar Styles for Chrome, Safari, and Edge */
+body::-webkit-scrollbar {
+  width: 10px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #dddddd;
+  border-radius: 5px;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #2c3e50;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #2c3e50;
+}
+
+/* Apply similar scrollbar styles to all scrollable elements */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2c3e50 #dddddd;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #dddddd;
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #2c3e50;
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #2c3e50;
 }
 
 /* Print styles */
@@ -9,7 +62,8 @@ body {
   body * {
     visibility: hidden;
   }
-  #printable-area, #printable-area * {
+  #printable-area,
+  #printable-area * {
     visibility: visible;
   }
   #printable-area {

@@ -1,9 +1,14 @@
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Paper, 
-  Grid, 
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Grid,
   Button,
   Table,
   TableBody,
@@ -16,141 +21,137 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent
-} from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import { Add, PictureAsPdf } from '@mui/icons-material';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useEffect, useState } from 'react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillPDF from './BillPDF';
-import { useAuth } from '../contexts/AuthContext';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { styled } from '@mui/material/styles';
-
-const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: '16px',
-  background: 'linear-gradient(145deg, #ffffff, #f0f0f0)',
-  boxShadow: '8px 8px 16px #d1d1d1, -8px -8px 16px #ffffff',
-  transition: 'all 0.3s ease-in-out',
-  '&:hover': {
-    transform: 'translateY(-8px) scale(1.02)',
-    boxShadow: '12px 12px 24px #b8b8b8, -12px -12px 24px #ffffff',
-  },
-}));
-
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  borderRadius: '16px',
-  background: 'linear-gradient(145deg, #ffffff, #f0f0f0)',
-  boxShadow: '6px 6px 12px #d1d1d1, -6px -6px 12px #ffffff',
-  transition: 'all 0.3s ease-in-out',
-  '&:hover': {
-    boxShadow: '10px 10px 20px #b8b8b8, -10px -10px 20px #ffffff',
-  },
-}));
-
-const StyledButton = styled(Button)(({ theme }) => ({
-  borderRadius: '12px',
-  padding: '10px 24px',
-  textTransform: 'none',
-  fontWeight: 600,
-  background: 'linear-gradient(90deg, #1976d2, #42a5f5)',
-  boxShadow: '4px 4px 8px #b8b8b8',
-  '&:hover': {
-    boxShadow: '6px 6px 12px #a0a0a0',
-    transform: 'translateY(-2px)',
-  },
-}));
+  CardContent,
+  TextField,
+  TablePagination,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import { Add, Search, Refresh, ArrowBack } from "@mui/icons-material";
+import { format, isWithinInterval, parseISO } from "date-fns";
+import { BarChart } from "@mui/x-charts/BarChart";
 
 const Home = () => {
-  const [recentBills, setRecentBills] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [billStats, setBillStats] = useState({ paid: [], pending: [], canceled: [] });
-  const [timePeriod, setTimePeriod] = useState('month');
-  const { currentUser, logout } = useAuth();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // State for bills and filtering
+  const [bills, setBills] = useState([]);
+  const [filteredBills, setFilteredBills] = useState([]);
+  const [parties, setParties] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [partySearch, setPartySearch] = useState("");
+  const [isFilterApplied, setIsFilterApplied] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  // State for bill statistics chart
+  const [billStats, setBillStats] = useState({ paid: [], pending: [] });
+  const [timePeriod, setTimePeriod] = useState("day");
 
   useEffect(() => {
     if (!currentUser) {
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
 
-    window.history.pushState(null, '', window.location.pathname);
+    window.history.pushState(null, "", window.location.pathname);
     const handleBack = (event) => {
       event.preventDefault();
-      window.history.pushState(null, '', window.location.pathname);
+      window.history.pushState(null, "", window.location.pathname);
     };
-    window.addEventListener('popstate', handleBack);
+    window.addEventListener("popstate", handleBack);
 
-    return () => window.removeEventListener('popstate', handleBack);
+    return () => window.removeEventListener("popstate", handleBack);
   }, [currentUser, navigate]);
 
   useEffect(() => {
     if (!currentUser) return;
 
-    const fetchBills = async () => {
+    const fetchData = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'bills'));
-        const billsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        // Fetch parties
+        const partiesQuery = collection(db, "parties");
+        const partiesSnapshot = await getDocs(partiesQuery);
+        const partiesMap = {};
+        partiesSnapshot.forEach((doc) => {
+          partiesMap[doc.id] =
+            doc.data().companyName || doc.data().partyName || "Unknown";
+        });
+        setParties(partiesMap);
 
-        const sortedRecent = billsData
-          .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .slice(0, 5);
-        setRecentBills(sortedRecent);
+        // Fetch bills
+        const billsQuery = collection(db, "bills");
+        const billsSnapshot = await getDocs(billsQuery);
+        const billsData = billsSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((bill) => bill.createdBy === currentUser.uid)
+          .sort((a, b) =>
+            String(a.billNo || "").localeCompare(String(b.billNo || ""))
+          );
+        setBills(billsData);
+        setFilteredBills(billsData);
 
+        // Calculate bill statistics
         const now = new Date();
-        const stats = { paid: [], pending: [], canceled: [] };
+        const stats = { paid: [], pending: [] };
         const periods = getPeriods(timePeriod);
 
-        periods.forEach(period => {
-          const periodBills = billsData.filter(bill => {
+        periods.forEach((period) => {
+          const periodBills = billsData.filter((bill) => {
             const billDate = new Date(bill.date);
             return isInPeriod(billDate, period, timePeriod);
           });
-          
-          stats.paid.push(periodBills.filter(b => b.status === 'paid').length);
-          stats.pending.push(periodBills.filter(b => b.status === 'pending').length);
-          stats.canceled.push(periodBills.filter(b => b.status === 'canceled').length);
+
+          stats.paid.push(
+            periodBills.filter((b) => b.status === "paid").length
+          );
+          stats.pending.push(
+            periodBills.filter((b) => b.status === "pending").length
+          );
         });
 
         setBillStats(stats);
       } catch (error) {
-        console.error('Error fetching bills: ', error);
+        console.error("Error fetching data: ", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBills();
+    fetchData();
   }, [currentUser, timePeriod]);
 
   const getPeriods = (periodType) => {
     const now = new Date();
     switch (periodType) {
-      case 'day':
+      case "day":
         return Array.from({ length: 7 }, (_, i) => {
           const date = new Date(now);
           date.setDate(now.getDate() - i);
           return date;
         }).reverse();
-      case 'week':
+      case "week":
         return Array.from({ length: 4 }, (_, i) => {
           const date = new Date(now);
-          date.setDate(now.getDate() - (i * 7));
+          date.setDate(now.getDate() - i * 7);
           return date;
         }).reverse();
-      case 'month':
+      case "month":
         return Array.from({ length: 6 }, (_, i) => {
           const date = new Date(now);
           date.setMonth(now.getMonth() - i);
           return date;
         }).reverse();
-      case 'year':
+      case "year":
         return Array.from({ length: 5 }, (_, i) => {
           const date = new Date(now);
           date.setFullYear(now.getFullYear() - i);
@@ -163,18 +164,20 @@ const Home = () => {
 
   const isInPeriod = (billDate, periodDate, periodType) => {
     switch (periodType) {
-      case 'day':
+      case "day":
         return billDate.toDateString() === periodDate.toDateString();
-      case 'week':
+      case "week":
         const weekStart = new Date(periodDate);
         weekStart.setDate(periodDate.getDate() - periodDate.getDay());
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         return billDate >= weekStart && billDate <= weekEnd;
-      case 'month':
-        return billDate.getMonth() === periodDate.getMonth() &&
-               billDate.getFullYear() === periodDate.getFullYear();
-      case 'year':
+      case "month":
+        return (
+          billDate.getMonth() === periodDate.getMonth() &&
+          billDate.getFullYear() === periodDate.getFullYear()
+        );
+      case "year":
         return billDate.getFullYear() === periodDate.getFullYear();
       default:
         return false;
@@ -183,186 +186,723 @@ const Home = () => {
 
   const formatLabel = (date) => {
     switch (timePeriod) {
-      case 'day': return date.toLocaleDateString('en-US', { weekday: 'short' });
-      case 'week': return `W${Math.ceil((date.getDate()) / 7)}`;
-      case 'month': return date.toLocaleDateString('en-US', { month: 'short' });
-      case 'year': return date.getFullYear().toString();
-      default: return '';
+      case "day":
+        return date.toLocaleDateString("en-US", { weekday: "short" });
+      case "week":
+        return `W${Math.ceil(date.getDate() / 7)}`;
+      case "month":
+        return date.toLocaleDateString("en-US", { month: "short" });
+      case "year":
+        return date.getFullYear().toString();
+      default:
+        return "";
     }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...bills];
+
+    // Apply party name search
+    if (partySearch.trim()) {
+      filtered = filtered.filter((bill) => {
+        const partyName = parties[bill.partyId] || "Unknown";
+        return partyName
+          .toLowerCase()
+          .includes(partySearch.trim().toLowerCase());
+      });
+    }
+
+    // Apply status filter
+    if (statusFilter === "Paid") {
+      filtered = filtered.filter((bill) => bill.status === "paid");
+    } else if (statusFilter === "Pending") {
+      filtered = filtered.filter((bill) => bill.status === "pending");
+    }
+
+    // Apply date range filter only if both dates are selected and filter is applied
+    if (startDate && endDate && isFilterApplied) {
+      filtered = filtered.filter((bill) => {
+        try {
+          const billDate = parseISO(bill.date);
+          const start = parseISO(startDate);
+          const end = parseISO(endDate);
+          return isWithinInterval(billDate, { start, end });
+        } catch (error) {
+          console.error("Date parsing error:", error);
+          return false;
+        }
+      });
+    }
+
+    setFilteredBills(filtered);
+    setPage(0);
+  };
+
+  const handleSearch = () => {
+    if (startDate && endDate) {
+      setIsFilterApplied(true);
+    } else {
+      setIsFilterApplied(false);
+    }
+    applyFilters();
+  };
+
+  const handleReset = () => {
+    setStartDate("");
+    setEndDate("");
+    setStatusFilter("All");
+    setPartySearch("");
+    setIsFilterApplied(false);
+    setFilteredBills(bills);
+    setPage(0);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleStatusFilterChange = (event) => {
+    setStatusFilter(event.target.value);
+  };
+
+  // Auto-reset if all filters are cleared
+  useEffect(() => {
+    if (!startDate && !endDate && !partySearch) {
+      setIsFilterApplied(false);
+      setFilteredBills(bills);
+      setPage(0);
+    }
+  }, [startDate, endDate, partySearch, bills]);
+
+  // Re-apply filters when status changes
+  useEffect(() => {
+    applyFilters();
+  }, [bills, statusFilter]);
+
+  const summary = {
+    total: filteredBills.reduce((sum, bill) => sum + (bill.total || 0), 0),
+    paid: filteredBills
+      .filter((bill) => bill.status === "paid")
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
+    pending: filteredBills
+      .filter((bill) => bill.status === "pending")
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
   };
 
   if (!currentUser || loading) {
     return (
-      <Container maxWidth="lg" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={60} thickness={4} sx={{ color: '#1976d2' }} />
+      <Container
+        maxWidth="lg"
+        sx={{
+          mt: { xs: 2, sm: 3, md: 4 },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "50vh",
+        }}
+      >
+        <CircularProgress size={48} />
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 6 }}>
-      <Grid container spacing={4}>
-        <Grid item xs={12} sm={6} md={4}>
-          <StyledCard>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: '#1a237e' }}>
+    <Container
+      sx={{
+        mt: { xs: 2, sm: 3, md: 4 },
+        mb: { xs: 2, sm: 3, md: 4 },
+        px: { xs: 1, sm: 2 },
+        minWidth: "95vw",
+        minHeight: "100vh",
+      }}
+    >
+      <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+        <Grid item xs={12} sm={6}>
+          <Card
+            elevation={3}
+            sx={{
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 2,
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+                }}
+              >
                 Add New Party
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mb: 3,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              >
                 Register new business parties with their GST details
               </Typography>
-              <StyledButton
+              <Button
                 variant="contained"
+                color="primary"
                 component={Link}
                 to="/add-party"
-                fullWidth
                 startIcon={<Add />}
+                size="large"
+                fullWidth
+                sx={{
+                  minWidth: { xs: "100%", sm: "160px" },
+                  height: { xs: "48px", sm: "56px" },
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  textTransform: "none",
+                }}
               >
                 Add Party
-              </StyledButton>
+              </Button>
             </CardContent>
-          </StyledCard>
+          </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          <StyledCard>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: '#1a237e' }}>
+        <Grid item xs={12} sm={6}>
+          <Card
+            elevation={3}
+            sx={{
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 2,
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+                }}
+              >
                 Create GST Bill
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mb: 3,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              >
                 Generate new GST invoices with tax calculations
               </Typography>
-              <StyledButton
+              <Button
                 variant="contained"
+                color="primary"
                 component={Link}
                 to="/add-bill"
-                fullWidth
                 startIcon={<Add />}
+                size="large"
+                fullWidth
+                sx={{
+                  minWidth: { xs: "100%", sm: "160px" },
+                  height: { xs: "48px", sm: "56px" },
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  textTransform: "none",
+                }}
               >
                 Create Bill
-              </StyledButton>
+              </Button>
             </CardContent>
-          </StyledCard>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <StyledCard sx={{ height: '100%' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: '#1a237e' }}>
-                Quick Stats
-              </Typography>
-              <Box>
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  Paid Bills: {billStats.paid.reduce((a, b) => a + b, 0)}
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 1 }}>
-                  Pending: {billStats.pending.reduce((a, b) => a + b, 0)}
-                </Typography>
-                <Typography variant="body1">
-                  Canceled: {billStats.canceled.reduce((a, b) => a + b, 0)}
-                </Typography>
-              </Box>
-            </CardContent>
-          </StyledCard>
+          </Card>
         </Grid>
 
         <Grid item xs={12}>
-          <StyledPaper sx={{ p: 4 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#1a237e' }}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: { xs: 2, sm: 3, md: 4 },
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "primary.main",
+                mb: 3,
+                fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+              }}
+            >
               Bill Statistics
             </Typography>
-            <Tabs 
-              value={timePeriod} 
+            <Tabs
+              value={timePeriod}
               onChange={(e, newValue) => setTimePeriod(newValue)}
               sx={{ mb: 4 }}
               variant="scrollable"
               scrollButtons="auto"
             >
-              <Tab label="Daily" value="day" sx={{ fontWeight: 600 }} />
-              <Tab label="Monthly" value="month" sx={{ fontWeight: 600 }} />
-              <Tab label="Yearly" value="year" sx={{ fontWeight: 600 }} />
+              <Tab
+                label="Daily"
+                value="day"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              />
+              <Tab
+                label="Weekly"
+                value="week"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              />
+              <Tab
+                label="Monthly"
+                value="month"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              />
+              <Tab
+                label="Yearly"
+                value="year"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                }}
+              />
             </Tabs>
             <BarChart
               series={[
-                { data: billStats.paid, label: 'Paid', color: '#2ecc71' },
-                { data: billStats.pending, label: 'Pending', color: '#f1c40f' },
-                { data: billStats.canceled, label: 'Canceled', color: '#e74c3c' },
+                { data: billStats.paid, label: "Paid", color: "#2ecc71" },
+                { data: billStats.pending, label: "Pending", color: "#f1c40f" },
               ]}
               height={350}
-              xAxis={[{
-                data: getPeriods(timePeriod).map(formatLabel),
-                scaleType: 'band',
-              }]}
+              xAxis={[
+                {
+                  data: getPeriods(timePeriod).map(formatLabel),
+                  scaleType: "band",
+                },
+              ]}
               margin={{ top: 30, bottom: 50, left: 60, right: 30 }}
               sx={{
-                '& .MuiChartsAxis-label': { fontSize: '1rem', fontWeight: 500 },
-                '& .MuiChartsLegend-root': { marginTop: '20px' },
+                "& .MuiChartsAxis-label": {
+                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                },
+                "& .MuiChartsLegend-root": { marginTop: "20px" },
+                width: "100%",
               }}
             />
-          </StyledPaper>
+          </Paper>
         </Grid>
 
-        {recentBills.length > 0 && (
-          <Grid item xs={12}>
-            <StyledPaper sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#1a237e' }}>
-                Recent Bills
-              </Typography>
-              <TableContainer>
-                <Table size="medium">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700, color: '#1a237e' }}>Bill No</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#1a237e' }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#1a237e' }}>Amount</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#1a237e' }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: '#1a237e' }}>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {recentBills.map(bill => (
-                      <TableRow key={bill.id} hover sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
-                        <TableCell>{bill.billNo}</TableCell>
-                        <TableCell>{new Date(bill.date).toLocaleDateString()}</TableCell>
-                        <TableCell>₹{bill.total.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={bill.status}
-                            color={
-                              bill.status === 'paid' ? 'success' :
-                              bill.status === 'pending' ? 'warning' : 'error'
-                            }
-                            size="small"
-                            sx={{ 
-                              minWidth: 90,
-                              boxShadow: '2px 2px 4px rgba(0,0,0,0.1)',
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <StyledButton
-                            component={Link}
-                            to={`/bill/${bill.id}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ 
-                              background: 'transparent',
-                              border: '2px solid #1976d2',
-                              '&:hover': { border: '2px solid #1565c0' }
+        <Grid item xs={12}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: { xs: 2, sm: 3, md: 4 },
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "primary.main",
+                mb: 4,
+                fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+              }}
+            >
+              All Bills
+            </Typography>
+
+            {/* Summary Section */}
+            <Grid
+              container
+              spacing={{ xs: 1, sm: 2 }}
+              sx={{ mb: { xs: 3, sm: 4 } }}
+            >
+              <Grid item xs={12} sm={4}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "primary.light",
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                  >
+                    Total
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontSize: { xs: "1.2rem", sm: "1.5rem" } }}
+                  >
+                    ₹{summary.total.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "#e6f3ff",
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                  >
+                    Paid
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontSize: { xs: "1.2rem", sm: "1.5rem" } }}
+                  >
+                    ₹{summary.paid.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: "#fff3e0",
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                  >
+                    Pending
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontSize: { xs: "1.2rem", sm: "1.5rem" } }}
+                  >
+                    ₹{summary.pending.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+
+            {/* Filter Section */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                justifyContent: "space-between",
+                mb: 3,
+                alignItems: { xs: "stretch", sm: "center" },
+                flexWrap: "wrap",
+                gap: { xs: 2, sm: 2 },
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2,
+                  flexGrow: 1,
+                  flexWrap: "wrap",
+                }}
+              >
+                <TextField
+                  label="Search By Party Name"
+                  value={partySearch}
+                  onChange={(e) => setPartySearch(e.target.value)}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 200, md: 300 },
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                />
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 200, md: 300 },
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                />
+                <TextField
+                  label="End Date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 200, md: 300 },
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                />
+                <FormControl
+                  sx={{
+                    minWidth: { xs: "100%", sm: 200 },
+                  }}
+                >
+                  <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                    Status
+                  </InputLabel>
+                  <Select
+                    value={statusFilter}
+                    onChange={handleStatusFilterChange}
+                    label="Status"
+                    sx={{
+                      "& .MuiSelect-select": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
+                  >
+                    <MenuItem value="All">All</MenuItem>
+                    <MenuItem value="Paid">Paid</MenuItem>
+                    <MenuItem value="Pending">Pending</MenuItem>
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSearch}
+                  size="large"
+                  sx={{
+                    minWidth: { xs: "100%", sm: "90px" },
+                    height: { xs: "48px", sm: "56px" },
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    textTransform: "none",
+                  }}
+                >
+                  <Search />
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={handleReset}
+                  size="large"
+                  sx={{
+                    minWidth: { xs: "100%", sm: "90px" },
+                    height: { xs: "48px", sm: "56px" },
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    textTransform: "none",
+                  }}
+                >
+                  <Refresh />
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Bills Table */}
+            <TableContainer
+              component={Paper}
+              elevation={2}
+              sx={{
+                borderRadius: 2,
+                maxWidth: "100%",
+                overflowX: "auto",
+              }}
+            >
+              <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "primary.light" }}>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
+                      Party Name
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
+                      Date
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
+                      Amount
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
+                      Status
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredBills.length > 0 ? (
+                    filteredBills
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage
+                      )
+                      .map((bill) => (
+                        <TableRow key={bill.id} hover>
+                          <TableCell
+                            align="center"
+                            sx={{
+                              fontSize: {
+                                xs: "0.8rem",
+                                sm: "0.9rem",
+                                md: "1rem",
+                              },
                             }}
                           >
-                            View
-                          </StyledButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </StyledPaper>
-          </Grid>
-        )}
+                            {parties[bill.partyId] || "Unknown"}
+                          </TableCell>
+                          <TableCell
+                            align="center"
+                            sx={{
+                              fontSize: {
+                                xs: "0.8rem",
+                                sm: "0.9rem",
+                                md: "1rem",
+                              },
+                            }}
+                          >
+                            {format(parseISO(bill.date), "dd-MM-yyyy")}
+                          </TableCell>
+                          <TableCell
+                            align="center"
+                            sx={{
+                              fontSize: {
+                                xs: "0.8rem",
+                                sm: "0.9rem",
+                                md: "1rem",
+                              },
+                            }}
+                          >
+                            ₹{bill.total.toFixed(2)}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={bill.status.toUpperCase()}
+                              color={
+                                bill.status === "paid"
+                                  ? "success"
+                                  : bill.status === "pending"
+                                  ? "warning"
+                                  : "error"
+                              }
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.85rem" },
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Button
+                              component={Link}
+                              to={`/bill/${bill.id}`}
+                              variant="outlined"
+                              color="primary"
+                              size="large"
+                              sx={{
+                                minWidth: { xs: "100%", sm: "160px" },
+                                height: { xs: "48px", sm: "56px" },
+                                fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                                textTransform: "none",
+                              }}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            py: 3,
+                            color: "text.secondary",
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          }}
+                        >
+                          No bills found
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredBills.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              sx={{
+                mt: 2,
+                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                  {
+                    fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                  },
+              }}
+            />
+          </Paper>
+        </Grid>
       </Grid>
     </Container>
   );
