@@ -54,6 +54,7 @@ import {
   MoreVert as MoreVertIcon,
   Close as CloseIcon,
   Edit as EditIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 
 const PartyManagement = () => {
@@ -68,6 +69,8 @@ const PartyManagement = () => {
   const [filteredParties, setFilteredParties] = useState([]);
   const [selectedParty, setSelectedParty] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [partyToDelete, setPartyToDelete] = useState(null);
   const [dialogMode, setDialogMode] = useState("add");
   const [expandedRow, setExpandedRow] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -315,16 +318,22 @@ const PartyManagement = () => {
     setOpenDialog(true);
   };
 
-  const handleDelete = async (partyId) => {
-    if (window.confirm("Are you sure you want to delete this party?")) {
-      try {
-        await deleteDoc(doc(db, "parties", partyId));
-        setParties(parties.filter((p) => p.id !== partyId));
-        setFilteredParties(filteredParties.filter((p) => p.id !== partyId));
-        setSuccess("Deleted");
-      } catch (error) {
-        setError("Failed to delete party: " + error.message);
-      }
+  const handleDelete = (partyId) => {
+    setPartyToDelete(partyId);
+    setOpenDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteDoc(doc(db, "parties", partyToDelete));
+      setParties(parties.filter((p) => p.id !== partyToDelete));
+      setFilteredParties(filteredParties.filter((p) => p.id !== partyToDelete));
+      setSuccess("Deleted");
+      setOpenDeleteDialog(false);
+      setPartyToDelete(null);
+    } catch (error) {
+      setError("Failed to delete party: " + error.message);
+      setOpenDeleteDialog(false);
     }
   };
 
@@ -491,7 +500,7 @@ const PartyManagement = () => {
                 textTransform: "none",
               }}
             >
-              <SearchIcon/>
+              <SearchIcon />
             </Button>
           </Box>
           <Button
@@ -860,7 +869,10 @@ const PartyManagement = () => {
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <Typography
                 variant={isMobile ? "h6" : "h5"}
-                sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                sx={{
+                  color: "white",
+                  fontSize: { xs: "1rem", sm: "1.25rem" },
+                }}
               >
                 {dialogMode === "view"
                   ? "View Party"
@@ -1574,6 +1586,62 @@ const PartyManagement = () => {
                 )}
               </>
             )}
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              bgcolor: "primary.main",
+              color: "white",
+              py: 2,
+              fontSize: { xs: "1rem", sm: "1.25rem" },
+            }}
+          >
+            Confirm Delete
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2, px: { xs: 2, sm: 3 } }}>
+            <Typography
+              sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" } }}
+            >
+              Are you sure you want to delete this party? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: { xs: 1, sm: 2 } }}>
+            <Button
+              onClick={() => setOpenDeleteDialog(false)}
+              variant="outlined"
+              color="primary"
+              size="large"
+              sx={{
+                minWidth: { xs: "100%", sm: "120px" },
+                height: { xs: "48px", sm: "56px" },
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+                textTransform: "none",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              variant="contained"
+              color="error"
+              size="large"
+              startIcon={<DeleteIcon />}
+              sx={{
+                minWidth: { xs: "100%", sm: "120px" },
+                height: { xs: "48px", sm: "56px" },
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+                textTransform: "none",
+              }}
+            >
+              Delete
+            </Button>
           </DialogActions>
         </Dialog>
       </Paper>

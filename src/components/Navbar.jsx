@@ -31,6 +31,7 @@ import {
   KeyboardArrowDown as ArrowDownIcon,
   KeyboardArrowLeft as ArrowLeftIcon,
   MoreVert as MoreVertIcon,
+  PersonAdd,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -168,6 +169,21 @@ const Navbar = () => {
                     timeout="auto"
                     unmountOnExit
                   >
+                    <ListItem disablePadding>
+                      <ListItemButton
+                        onClick={() => {
+                          navigate("/add-party");
+                          handleClose();
+                        }}
+                        sx={{
+                          pl: 4,
+                          color: "#ecf0f1",
+                          "&:hover": { bgcolor: "#2c3e50" },
+                        }}
+                      >
+                        Party Manage
+                      </ListItemButton>
+                    </ListItem>
                     <List component="div" disablePadding>
                       <ListItem disablePadding>
                         <ListItemButton
@@ -182,21 +198,6 @@ const Navbar = () => {
                           }}
                         >
                           All Parties
-                        </ListItemButton>
-                      </ListItem>
-                      <ListItem disablePadding>
-                        <ListItemButton
-                          onClick={() => {
-                            navigate("/add-party");
-                            handleClose();
-                          }}
-                          sx={{
-                            pl: 4,
-                            color: "#ecf0f1",
-                            "&:hover": { bgcolor: "#2c3e50" },
-                          }}
-                        >
-                          Add Party
                         </ListItemButton>
                       </ListItem>
                     </List>
@@ -459,6 +460,18 @@ const Navbar = () => {
             >
               <MenuItem
                 onClick={() => {
+                  navigate("/add-party");
+                  handleClose();
+                }}
+                sx={{ fontSize: "1rem", py: 1, px: 2 }}
+              >
+                <ListItemIcon>
+                  <PersonAdd sx={{ color: "#ecf0f1" }} />
+                </ListItemIcon>
+                Party Manage
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
                   navigate("/parties");
                   handleClose();
                 }}
@@ -468,18 +481,6 @@ const Navbar = () => {
                   <GroupIcon sx={{ color: "#ecf0f1" }} />
                 </ListItemIcon>
                 All Parties
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  navigate("/add-party");
-                  handleClose();
-                }}
-                sx={{ fontSize: "1rem", py: 1, px: 2 }}
-              >
-                <ListItemIcon>
-                  <GroupIcon sx={{ color: "#ecf0f1" }} />
-                </ListItemIcon>
-                Add Party
               </MenuItem>
             </Menu>
 

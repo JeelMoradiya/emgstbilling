@@ -18,10 +18,9 @@ import {
   Box,
   Alert,
   TextField,
-  InputAdornment,
   TablePagination,
 } from "@mui/material";
-import { Add, Search } from "@mui/icons-material";
+import { Search } from "@mui/icons-material";
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);
@@ -157,7 +156,7 @@ const AllParties = () => {
           sx={{
             display: "flex",
             flexDirection: { xs: "column", sm: "row" },
-            justifyContent: "space-between",
+            justifyContent: "flex-start",
             alignItems: { xs: "stretch", sm: "center" },
             mb: 3,
             gap: { xs: 2, sm: 2 },
@@ -168,7 +167,7 @@ const AllParties = () => {
               display: "flex",
               flexDirection: { xs: "column", sm: "row" },
               gap: 2,
-              width: { xs: "100%", sm: "82%" },
+              width: { xs: "100%", sm: "auto" },
             }}
           >
             <TextField
@@ -194,25 +193,9 @@ const AllParties = () => {
                 textTransform: "none",
               }}
             >
-               <Search />
+              <Search />
             </Button>
           </Box>
-          <Button
-            variant="contained"
-            component={Link}
-            to="/add-party"
-            startIcon={<Add />}
-            disabled={!currentUser}
-            size="large"
-            sx={{
-              minWidth: { xs: "100%", sm: "160px" },
-              height: { xs: "48px", sm: "56px" },
-              fontSize: { xs: "0.9rem", sm: "1rem" },
-              textTransform: "none",
-            }}
-          >
-            Add New Party
-          </Button>
         </Box>
 
         <TableContainer
