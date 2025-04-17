@@ -539,7 +539,7 @@ const PartyManagement = () => {
                     fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
                   }}
                 >
-                  Sr. No.
+                  No.
                 </TableCell>
                 <TableCell
                   sx={{
@@ -685,7 +685,7 @@ const PartyManagement = () => {
                                     variant="subtitle1"
                                     sx={{
                                       fontWeight: "bold",
-                                      color: "#42a5f5",
+                                      color: "#2c3e50",
                                       mb: 1,
                                       fontSize: {
                                         xs: "0.85rem",
@@ -734,8 +734,8 @@ const PartyManagement = () => {
                                     variant="subtitle1"
                                     sx={{
                                       fontWeight: "bold",
-                                      color: "#42a5f5",
-                                      mb: 1,
+                                      color: "#2c3e50",
+                                      mb:1,
                                       fontSize: {
                                         xs: "0.85rem",
                                         sm: "1rem",
@@ -783,7 +783,7 @@ const PartyManagement = () => {
                                     variant="subtitle1"
                                     sx={{
                                       fontWeight: "bold",
-                                      color: "#42a5f5",
+                                      color: "#2c3e50",
                                       mb: 1,
                                       fontSize: {
                                         xs: "0.85rem",
@@ -864,7 +864,7 @@ const PartyManagement = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-            }}
+             }}
           >
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <Typography
@@ -912,7 +912,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
@@ -974,7 +974,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
@@ -1036,7 +1036,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
@@ -1159,7 +1159,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
@@ -1246,7 +1246,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
@@ -1334,7 +1334,7 @@ const PartyManagement = () => {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      color: "#42a5f5",
+                      color: "#2c3e50",
                       mb: 2,
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}

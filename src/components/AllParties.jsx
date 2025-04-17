@@ -20,7 +20,7 @@ import {
   TextField,
   TablePagination,
 } from "@mui/material";
-import { Search } from "@mui/icons-material";
+import { Search, Wysiwyg, Payments, CurrencyRupee } from "@mui/icons-material";
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);
@@ -63,16 +63,45 @@ const AllParties = () => {
     fetchParties();
   }, [currentUser]);
 
-  const handleSearch = () => {
-    const filtered = parties.filter(
-      (party) =>
-        (party.companyName || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        (party.gstNo || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredParties(filtered);
-    setPage(0);
+  const handleSearch = async () => {
+    try {
+      let filtered = parties;
+      if (searchTerm.trim()) {
+        filtered = parties.filter(
+          (party) =>
+            (party.companyName || "")
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()) ||
+            (party.gstNo || "").toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        // Fetch pending bills for filtered parties
+        for (let party of filtered) {
+          const billsQuery = query(
+            collection(db, "bills"),
+            where("partyId", "==", party.id),
+            where("status", "==", "pending")
+          );
+          const billsSnapshot = await getDocs(billsQuery);
+          const pendingBills = billsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          party.pendingBills = pendingBills;
+        }
+      } else {
+        // Clear pending bills if no search term
+        filtered = parties.map((party) => ({
+          ...party,
+          pendingBills: [],
+        }));
+      }
+      setFilteredParties(filtered);
+      setPage(0);
+    } catch (error) {
+      console.error("Error searching parties: ", error);
+      setError("Failed to search parties: " + error.message);
+    }
   };
 
   const handleChangePage = (event, newPage) => {
@@ -167,7 +196,7 @@ const AllParties = () => {
               display: "flex",
               flexDirection: { xs: "column", sm: "row" },
               gap: 2,
-              width: { xs: "100%", sm: "auto" },
+              width: { xs: "auto", sm: "100%" },
             }}
           >
             <TextField
@@ -294,13 +323,30 @@ const AllParties = () => {
                           color="primary"
                           size="large"
                           sx={{
-                            minWidth: { xs: "100px", sm: "120px" },
-                            height: { xs: "40px", sm: "48px" },
-                            fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                            minWidth: { xs: "50px", sm: "50px" },
+                            height: { xs: "50px", sm: "50px" },
+                            fontSize: { xs: "1rem", sm: "1rem" },
+                            textTransform: "none",
+                            marginRight: "10px",
+                          }}
+                        >
+                          <Wysiwyg />
+                        </Button>
+                        <Button
+                          component={Link}
+                          to={`/payment/${party.id}`}
+                          variant="outlined"
+                          color="primary"
+                          size="large"
+                          sx={{
+                            minWidth: { xs: "50px", sm: "50px" },
+                            height: { xs: "50px", sm: "50px" },
+                            fontSize: { xs: "1rem", sm: "1rem" },
                             textTransform: "none",
                           }}
                         >
-                          View Bills
+                          <CurrencyRupee />
+                          <Payments />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -325,6 +371,57 @@ const AllParties = () => {
           </Table>
         </TableContainer>
 
+        {filteredParties.some((party) => party.pendingBills?.length > 0) && (
+          <Box mt={4}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "primary.main",
+                mb: 2,
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+              }}
+            >
+              Pending Bills
+            </Typography>
+            {filteredParties.map(
+              (party) =>
+                party.pendingBills?.length > 0 && (
+                  <Box key={party.id} mb={3}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: "bold", mb: 1 }}
+                    >
+                      {party.companyName}
+                    </Typography>
+                    <TableContainer component={Paper} elevation={1}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Bill ID</TableCell>
+                            <TableCell>Total Amount</TableCell>
+                            <TableCell>TDS</TableCell>
+                            <TableCell>Other (Claim)</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {party.pendingBills.map((bill) => (
+                            <TableRow key={bill.id}>
+                              <TableCell>{bill.id}</TableCell>
+                              <TableCell>{bill.totalAmount || "N/A"}</TableCell>
+                              <TableCell>{bill.tds || "0"}</TableCell>
+                              <TableCell>{bill.otherClaim || "0"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )
+            )}
+          </Box>
+        )}
+
         <TablePagination
           component="div"
           count={filteredParties.length}
@@ -335,9 +432,10 @@ const AllParties = () => {
           rowsPerPageOptions={[5, 10, 25, 50]}
           sx={{
             mt: 2,
-            "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-              fontSize: { xs: "0.85rem", sm: "0.95rem" },
-            },
+            "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+              {
+                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+              },
           }}
         />
       </Paper>

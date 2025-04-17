@@ -67,48 +67,64 @@ const AddGSTBill = () => {
   const [openDialog, setOpenDialog] = useState(false);
 
   const validationSchema = Yup.object({
-    partyId: Yup.string().required("Party is required"),
-    paymentMethod: Yup.string().required("Payment method is required"),
+    partyId: Yup.string()
+      .required("Party is required")
+      .min(1, "Party selection is required"),
+    paymentMethod: Yup.string()
+      .required("Payment method is required")
+      .oneOf(["cheque", "cash", "upi", "netbanking"], "Invalid payment method"),
     gstRate: Yup.number()
       .required("GST rate is required")
-      .min(0, "GST rate cannot be negative"),
+      .min(0, "GST rate cannot be negative")
+      .oneOf([0, 5, 12, 18, 28], "Invalid GST rate"),
     date: Yup.date()
       .required("Invoice date is required")
-      .max(new Date(), "Date cannot be in the future"),
+      .max(new Date(), "Date cannot be in the future")
+      .typeError("Invalid date format"),
     items: Yup.array()
       .of(
         Yup.object({
           name: Yup.string()
             .trim()
             .required("Item name is required")
-            .min(1, "Item name cannot be empty"),
-          hsn: Yup.string().test(
-            "hsn-optional",
-            "HSN code is required ",
-            (value) =>
-              !value || value.trim() === ""
-          ),
+            .min(1, "Item name cannot be empty")
+            .max(100, "Item name cannot exceed 100 characters"),
+          hsn: Yup.string()
+            .optional()
+            .matches(/^\d{4,8}$/, {
+              message: "HSN code must be 4 to 8 digits",
+              excludeEmptyString: true,
+            })
+            .max(8, "HSN code cannot exceed 8 characters"),
           quantity: Yup.number()
             .required("Quantity is required")
             .min(1, "Quantity must be at least 1")
+            .max(10000, "Quantity cannot exceed 10,000")
             .typeError("Quantity must be a number"),
           price: Yup.number()
             .required("Price is required")
             .min(0.01, "Price must be greater than 0")
+            .max(1000000, "Price cannot exceed 1,000,000")
             .typeError("Price must be a number"),
         })
       )
-      .min(1, "At least one item is required"),
-    discount: Yup.string().test(
-      "discount-optional",
-      "Discount must be a number between 0 and 100",
-      (value) =>
-        !value ||
-        value.trim() === "" ||
-        (/^\d*\.?\d*$/.test(value) &&
-          parseFloat(value) >= 0 &&
-          parseFloat(value) <= 100)
-    ),
+      .min(1, "At least one item is required")
+      .required("Items are required"),
+    discount: Yup.string()
+      .optional()
+      .test(
+        "discount-validation",
+        "Discount must be a number between 0 and 100",
+        (value) =>
+          !value ||
+          value.trim() === "" ||
+          (/^\d*\.?\d*$/.test(value) &&
+            parseFloat(value) >= 0 &&
+            parseFloat(value) <= 100)
+      ),
+    notes: Yup.string()
+      .optional()
+      .max(500, "Notes cannot exceed 500 characters"),
   });
 
   const formik = useFormik({
@@ -121,6 +137,7 @@ const AddGSTBill = () => {
       status: "pending",
       notes: "",
       items: items,
+      discount: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -246,8 +263,7 @@ const AddGSTBill = () => {
   const calculateTotals = () => {
     const subtotal = items.reduce(
       (sum, item) =>
-        sum +
-        (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0),
+        sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0),
       0
     );
     const discountAmount = subtotal * ((parseFloat(discount) || 0) / 100);
@@ -342,6 +358,56 @@ const AddGSTBill = () => {
 
         <form onSubmit={formik.handleSubmit}>
           <Grid container spacing={{ xs: 2, sm: 3 }}>
+            <Grid item xs={12}>
+              <FormControl
+                fullWidth
+                error={formik.touched.partyId && Boolean(formik.errors.partyId)}
+              >
+                <InputLabel
+                  id="party-label"
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                >
+                  Select Party *
+                </InputLabel>
+                <Select
+                  labelId="party-label"
+                  id="partyId"
+                  name="partyId"
+                  label="Select Party *"
+                  value={formik.values.partyId}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  variant="outlined"
+                  sx={{
+                    "& .MuiSelect-select": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                >
+                  <MenuItem
+                    value=""
+                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                  >
+                    Select a party
+                  </MenuItem>
+                  {parties.map((party) => (
+                    <MenuItem
+                      key={party.id}
+                      value={party.id}
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      {party.companyName} ({party.gstNo})
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formik.touched.partyId && formik.errors.partyId && (
+                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                    {formik.errors.partyId}
+                  </Typography>
+                )}
+              </FormControl>
+            </Grid>
+            
             <Grid item xs={12} sm={6} md={4}>
               <TextField
                 fullWidth
@@ -426,56 +492,6 @@ const AddGSTBill = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12}>
-              <FormControl
-                fullWidth
-                error={formik.touched.partyId && Boolean(formik.errors.partyId)}
-              >
-                <InputLabel
-                  id="party-label"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                >
-                  Select Party *
-                </InputLabel>
-                <Select
-                  labelId="party-label"
-                  id="partyId"
-                  name="partyId"
-                  label="Select Party *"
-                  value={formik.values.partyId}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  variant="outlined"
-                  sx={{
-                    "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
-                    },
-                  }}
-                >
-                  <MenuItem
-                    value=""
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                  >
-                    Select a party
-                  </MenuItem>
-                  {parties.map((party) => (
-                    <MenuItem
-                      key={party.id}
-                      value={party.id}
-                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                    >
-                      {party.companyName} ({party.gstNo})
-                    </MenuItem>
-                  ))}
-                </Select>
-                {formik.touched.partyId && formik.errors.partyId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                    {formik.errors.partyId}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
-
             <Grid item xs={12} sm={6}>
               <FormControl
                 fullWidth
@@ -530,11 +546,12 @@ const AddGSTBill = () => {
                     Net Banking
                   </MenuItem>
                 </Select>
-                {formik.touched.paymentMethod && formik.errors.paymentMethod && (
-                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                    {formik.errors.paymentMethod}
-                  </Typography>
-                )}
+                {formik.touched.paymentMethod &&
+                  formik.errors.paymentMethod && (
+                    <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                      {formik.errors.paymentMethod}
+                    </Typography>
+                  )}
               </FormControl>
             </Grid>
 
@@ -675,7 +692,7 @@ const AddGSTBill = () => {
                           },
                         }}
                       >
-                        Price (₹) 
+                        Price (₹)
                       </TableCell>
                       <TableCell
                         sx={{
@@ -714,8 +731,13 @@ const AddGSTBill = () => {
                             onChange={(e) =>
                               handleItemChange(index, "name", e.target.value)
                             }
-                            onBlur={() => formik.setFieldTouched(`items[${index}].name`, true)}
-                            placeholder="item name"
+                            onBlur={() =>
+                              formik.setFieldTouched(
+                                `items[${index}].name`,
+                                true
+                              )
+                            }
+                            placeholder="Enter item name"
                             variant="outlined"
                             error={
                               formik.touched.items &&
@@ -750,8 +772,13 @@ const AddGSTBill = () => {
                             onChange={(e) =>
                               handleItemChange(index, "hsn", e.target.value)
                             }
-                            onBlur={() => formik.setFieldTouched(`items[${index}].hsn`, true)}
-                            placeholder="HSN code"
+                            onBlur={() =>
+                              formik.setFieldTouched(
+                                `items[${index}].hsn`,
+                                true
+                              )
+                            }
+                            placeholder="Enter HSN code (optional)"
                             variant="outlined"
                             error={
                               formik.touched.items &&
@@ -791,8 +818,14 @@ const AddGSTBill = () => {
                                 e.target.value
                               )
                             }
-                            onBlur={() => formik.setFieldTouched(`items[${index}].quantity`, true)}
+                            onBlur={() =>
+                              formik.setFieldTouched(
+                                `items[${index}].quantity`,
+                                true
+                              )
+                            }
                             inputProps={{ min: 1, step: 1 }}
+                            placeholder="Enter quantity"
                             variant="outlined"
                             error={
                               formik.touched.items &&
@@ -828,8 +861,14 @@ const AddGSTBill = () => {
                             onChange={(e) =>
                               handleItemChange(index, "price", e.target.value)
                             }
-                            onBlur={() => formik.setFieldTouched(`items[${index}].price`, true)}
+                            onBlur={() =>
+                              formik.setFieldTouched(
+                                `items[${index}].price`,
+                                true
+                              )
+                            }
                             inputProps={{ min: 0, step: 0.01 }}
+                            placeholder="Enter price"
                             variant="outlined"
                             error={
                               formik.touched.items &&
@@ -909,10 +948,14 @@ const AddGSTBill = () => {
                 name="discount"
                 label="Discount (%)"
                 type="text"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
+                value={formik.values.discount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDiscount(value);
+                  formik.setFieldValue("discount", value);
+                }}
                 onBlur={formik.handleBlur}
-                placeholder="Enter discount percentage (0-100)"
+                placeholder="Enter discount percentage (optional)"
                 variant="outlined"
                 error={
                   formik.touched.discount && Boolean(formik.errors.discount)
@@ -940,11 +983,16 @@ const AddGSTBill = () => {
                 onBlur={formik.handleBlur}
                 multiline
                 rows={isMobile ? 2 : 3}
-                placeholder="Add any additional information here"
+                placeholder="Add any additional information (optional)"
                 variant="outlined"
+                error={formik.touched.notes && Boolean(formik.errors.notes)}
+                helperText={formik.touched.notes && formik.errors.notes}
                 sx={{
                   "& .MuiInputBase-root": {
                     fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                  "& .MuiFormHelperText-root": {
+                    color: "error.main",
                   },
                 }}
               />
@@ -983,8 +1031,8 @@ const AddGSTBill = () => {
                         fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
                       }}
                     >
-                      <strong>Discount ({parseFloat(discount) || 0}%):</strong> ₹
-                      {discountAmount.toFixed(2)}
+                      <strong>Discount ({parseFloat(discount) || 0}%):</strong>{" "}
+                      ₹{discountAmount.toFixed(2)}
                     </Typography>
                     <Typography
                       variant="body1"

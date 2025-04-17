@@ -29,7 +29,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import { Add, Search, Refresh, ArrowBack } from "@mui/icons-material";
+import { Add, Search, Refresh } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { BarChart } from "@mui/x-charts/BarChart";
 

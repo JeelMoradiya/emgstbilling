@@ -15,6 +15,7 @@ import AddGSTBill from './components/AddGSTBill';
 import PartyBills from './components/PartyBills';
 import ViewBill from './components/ViewBill';
 import AllParties from './components/AllParties';
+import Payment from './components/Payment';
 import NotFound from './components/NotFound';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import { useAuth } from './contexts/AuthContext';
@@ -76,6 +77,7 @@ function App() {
             <Route path="/party-bills/:partyId" element={<ProtectedRoute component={PartyBills} navbar={<Navbar />} />} />
             <Route path="/bill/:billId" element={<ProtectedRoute component={ViewBill} navbar={<Navbar />} />} />
             <Route path="/parties" element={<ProtectedRoute component={AllParties} navbar={<Navbar />} />} />
+            <Route path="/payment/:partyId" element={<ProtectedRoute component={Payment} navbar={<Navbar />} />} />
             <Route path="/profile" element={<ProtectedRoute component={Profile} navbar={<Navbar />} />} />
             <Route path="/settings" element={<ProtectedRoute component={Settings} navbar={<Navbar />} />} />
             <Route path="/privacy-policy" element={<ProtectedRoute component={PrivacyPolicy} navbar={<Navbar />} />} />
