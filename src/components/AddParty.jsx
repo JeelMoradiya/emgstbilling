@@ -60,7 +60,6 @@ import {
 const PartyManagement = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
@@ -182,13 +181,13 @@ const PartyManagement = () => {
   };
 
   const validationSchema = Yup.object({
-    fullName: Yup.string().required("Required"),
+    fullName: Yup.string(),
     email: Yup.string().email("Invalid email address"),
     mobileNo: Yup.string()
       .matches(/^[0-9]{10}$/, "Mobile number must be 10 digits")
       .required("Required"),
     companyName: Yup.string().required("Required"),
-    gstOwnerName: Yup.string().required("Required"),
+    gstOwnerName: Yup.string(),
     gstNo: Yup.string()
       .matches(
         /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
@@ -349,10 +348,6 @@ const PartyManagement = () => {
     formik.resetForm();
     setSelectedParty(null);
     setDialogMode("add");
-  };
-
-  const handleToggleRow = (partyId) => {
-    setExpandedRow(expandedRow === partyId ? null : partyId);
   };
 
   const handleMenuOpen = (event, partyId) => {
@@ -555,14 +550,6 @@ const PartyManagement = () => {
                     fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
                   }}
                 >
-                  GST Owner Name
-                </TableCell>
-                <TableCell
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                  }}
-                >
                   GST No
                 </TableCell>
                 <TableCell
@@ -572,6 +559,14 @@ const PartyManagement = () => {
                   }}
                 >
                   Mobile No
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: "bold",
+                    fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                  }}
+                >
+                  GST Owner Name
                 </TableCell>
                 <TableCell
                   sx={{
@@ -607,13 +602,6 @@ const PartyManagement = () => {
                             fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
                           }}
                         >
-                          {party.gstOwnerName || "N/A"}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
-                          }}
-                        >
                           {party.gstNo || "N/A"}
                         </TableCell>
                         <TableCell
@@ -622,6 +610,13 @@ const PartyManagement = () => {
                           }}
                         >
                           {party.mobileNo || "N/A"}
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                          }}
+                        >
+                          {party.gstOwnerName || "N/A"}
                         </TableCell>
                         <TableCell>
                           <IconButton
@@ -717,17 +712,6 @@ const PartyManagement = () => {
                                   >
                                     Email: {party.email || "N/A"}
                                   </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: {
-                                        xs: "0.75rem",
-                                        sm: "0.875rem",
-                                      },
-                                    }}
-                                  >
-                                    Mobile No: {party.mobileNo || "N/A"}
-                                  </Typography>
                                 </Grid>
                                 <Grid item xs={12} sm={4}>
                                   <Typography
@@ -764,7 +748,7 @@ const PartyManagement = () => {
                                       },
                                     }}
                                   >
-                                    GST Owner: {party.gstOwnerName || "N/A"}
+                                    GST No: {party.gstNo || "N/A"}
                                   </Typography>
                                   <Typography
                                     variant="body2"
@@ -775,7 +759,18 @@ const PartyManagement = () => {
                                       },
                                     }}
                                   >
-                                    GST No: {party.gstNo || "N/A"}
+                                    Mobile No: {party.mobileNo || "N/A"}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: {
+                                        xs: "0.75rem",
+                                        sm: "0.875rem",
+                                      },
+                                    }}
+                                  >
+                                    GST Owner: {party.gstOwnerName || "N/A"}
                                   </Typography>
                                 </Grid>
                                 <Grid item xs={12} sm={4}>
@@ -907,6 +902,85 @@ const PartyManagement = () => {
           <DialogContent sx={{ mt: 2, px: { xs: 2, sm: 3 } }}>
             {dialogMode === "view" ? (
               <>
+
+                <Box sx={{ mb: 3 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      color: "#2c3e50",
+                      mb: 2,
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                    }}
+                  >
+                    GST Information
+                  </Typography>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
+                    <Grid item xs={12} md={6}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
+                        Company Name
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                      >
+                        {formik.values.companyName || "N/A"}
+                      </Typography>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
+                        GST No
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                      >
+                        {formik.values.gstNo || "N/A"}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
+                        Mobile No
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                      >
+                        {formik.values.mobileNo || "N/A"}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                      >
+                        GST Owner Name
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                      >
+                        {formik.values.gstOwnerName || "N/A"}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
                 <Box sx={{ mb: 3 }}>
                   <Typography
                     variant="h6"
@@ -950,85 +1024,8 @@ const PartyManagement = () => {
                         {formik.values.email || "N/A"}
                       </Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Mobile No
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.mobileNo || "N/A"}
-                      </Typography>
-                    </Grid>
                   </Grid>
-                </Box>
-
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ mb: 3 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    GST Information
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={4}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Company Name
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.companyName || "N/A"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        GST Owner Name
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.gstOwnerName || "N/A"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        GST No
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.gstNo || "N/A"}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
+                </Box>               
 
                 <Divider sx={{ my: 2 }} />
                 <Box>
@@ -1164,6 +1161,120 @@ const PartyManagement = () => {
                       fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                   >
+                    GST Information
+                  </Typography>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        id="companyName"
+                        name="companyName"
+                        label="Company Name"
+                        value={formik.values.companyName}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        error={
+                          formik.touched.companyName &&
+                          Boolean(formik.errors.companyName)
+                        }
+                        helperText={
+                          formik.touched.companyName &&
+                          formik.errors.companyName
+                        }
+                        variant="outlined"
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          },
+                        }}
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        id="gstNo"
+                        name="gstNo"
+                        label="GST No"
+                        value={formik.values.gstNo}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        error={
+                          formik.touched.gstNo && Boolean(formik.errors.gstNo)
+                        }
+                        helperText={formik.touched.gstNo && formik.errors.gstNo}
+                        variant="outlined"
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        id="mobileNo"
+                        name="mobileNo"
+                        label="Mobile No"
+                        value={formik.values.mobileNo}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        error={
+                          formik.touched.mobileNo &&
+                          Boolean(formik.errors.mobileNo)
+                        }
+                        helperText={
+                          formik.touched.mobileNo && formik.errors.mobileNo
+                        }
+                        variant="outlined"
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          },
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        id="gstOwnerName"
+                        name="gstOwnerName"
+                        label="GST Owner Name"
+                        value={formik.values.gstOwnerName}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        error={
+                          formik.touched.gstOwnerName &&
+                          Boolean(formik.errors.gstOwnerName)
+                        }
+                        helperText={
+                          formik.touched.gstOwnerName &&
+                          formik.errors.gstOwnerName
+                        }
+                        variant="outlined"
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          },
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Box sx={{ mb: 3 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      color: "#2c3e50",
+                      mb: 2,
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                    }}
+                  >
                     Party Information
                   </Typography>
                   <Grid container spacing={{ xs: 2, sm: 3 }}>
@@ -1213,118 +1324,7 @@ const PartyManagement = () => {
                         }}
                       />
                     </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        id="mobileNo"
-                        name="mobileNo"
-                        label="Mobile No"
-                        value={formik.values.mobileNo}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                        error={
-                          formik.touched.mobileNo &&
-                          Boolean(formik.errors.mobileNo)
-                        }
-                        helperText={
-                          formik.touched.mobileNo && formik.errors.mobileNo
-                        }
-                        variant="outlined"
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ mb: 3 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    GST Information
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        id="companyName"
-                        name="companyName"
-                        label="Company Name"
-                        value={formik.values.companyName}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                        error={
-                          formik.touched.companyName &&
-                          Boolean(formik.errors.companyName)
-                        }
-                        helperText={
-                          formik.touched.companyName &&
-                          formik.errors.companyName
-                        }
-                        variant="outlined"
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        id="gstOwnerName"
-                        name="gstOwnerName"
-                        label="GST Owner Name"
-                        value={formik.values.gstOwnerName}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                        error={
-                          formik.touched.gstOwnerName &&
-                          Boolean(formik.errors.gstOwnerName)
-                        }
-                        helperText={
-                          formik.touched.gstOwnerName &&
-                          formik.errors.gstOwnerName
-                        }
-                        variant="outlined"
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        id="gstNo"
-                        name="gstNo"
-                        label="GST No"
-                        value={formik.values.gstNo}
-                        onChange={formik.handleChange}
-                        onBlur={formik.handleBlur}
-                        error={
-                          formik.touched.gstNo && Boolean(formik.errors.gstNo)
-                        }
-                        helperText={formik.touched.gstNo && formik.errors.gstNo}
-                        variant="outlined"
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
+                    
                   </Grid>
                 </Box>
 

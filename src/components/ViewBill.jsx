@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import {
   Container,
   Button,
@@ -30,6 +32,8 @@ import {
   DialogActions,
   Snackbar,
   Alert,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -105,34 +109,168 @@ const stateCities = {
 };
 
 const ViewBill = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { billId } = useParams();
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedBill, setEditedBill] = useState(null);
   const [openAddItem, setOpenAddItem] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [newItem, setNewItem] = useState({
     name: "",
     hsn: "",
-    quantity: 0,
-    price: 0,
+    quantity: "",
+    price: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+  const [userState, setUserState] = useState("");
+
+  const validationSchema = Yup.object({
+    partyDetails: Yup.object({
+      companyName: Yup.string()
+        .trim()
+        .required("Company name is required")
+        .min(1, "Company name cannot be empty")
+        .max(100, "Company name cannot exceed 100 characters"),
+      gstNo: Yup.string()
+        .required("GSTIN is required")
+        .matches(
+          /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+          "Invalid GSTIN format"
+        ),
+      mobileNo: Yup.string()
+        .optional()
+        .matches(/^[0-9]{10}$/, {
+          message: "Mobile number must be 10 digits",
+          excludeEmptyString: true,
+        }),
+      plotHouseNo: Yup.string()
+        .optional()
+        .max(50, "Plot/House No cannot exceed 50 characters"),
+      line1: Yup.string()
+        .optional()
+        .max(100, "Address Line 1 cannot exceed 100 characters"),
+      area: Yup.string()
+        .optional()
+        .max(100, "Area cannot exceed 100 characters"),
+      landmark: Yup.string()
+        .optional()
+        .max(100, "Landmark cannot exceed 100 characters"),
+      state: Yup.string()
+        .required("State is required")
+        .oneOf(Object.keys(stateCities), "Invalid state"),
+      city: Yup.string()
+        .required("City is required")
+        .test(
+          "valid-city",
+          "Invalid city for selected state",
+          function (value) {
+            const { state } = this.parent;
+            return state && stateCities[state]?.includes(value);
+          }
+        ),
+      pincode: Yup.string()
+        .optional()
+        .matches(/^[0-9]{6}$/, {
+          message: "Pincode must be 6 digits",
+          excludeEmptyString: true,
+        }),
+    }),
+    paymentMethod: Yup.string()
+      .required("Payment method is required")
+      .oneOf(["cheque", "cash", "upi", "netbanking"], "Invalid payment method"),
+    gstRate: Yup.number()
+      .required("GST rate is required")
+      .min(0, "GST rate cannot be negative")
+      .oneOf([0, 5, 12, 18, 28], "Invalid GST rate"),
+    date: Yup.date()
+      .required("Invoice date is required")
+      .max(new Date(), "Date cannot be in the future")
+      .typeError("Invalid date format"),
+    challanNo: Yup.string()
+      .required("Party challan number is required")
+      .matches(/^[0-9-]{1,20}$/, "Invalid challan number format")
+      .max(20, "Challan number cannot exceed 20 characters"),
+    items: Yup.array()
+      .of(
+        Yup.object({
+          name: Yup.string()
+            .trim()
+            .required("Item name is required")
+            .min(1, "Item name cannot be empty")
+            .max(100, "Item name cannot exceed 100 characters"),
+          hsn: Yup.string()
+            .optional()
+            .matches(/^\d{4,8}$/, {
+              message: "HSN code must be 4 to 8 digits",
+              excludeEmptyString: true,
+            })
+            .max(8, "HSN code cannot exceed 8 characters"),
+          quantity: Yup.number()
+            .required("Quantity is required")
+            .min(1, "Quantity must be at least 1")
+            .max(10000, "Quantity cannot exceed 10,000")
+            .typeError("Quantity must be a number"),
+          price: Yup.number()
+            .required("Price is required")
+            .min(0.01, "Price must be greater than 0")
+            .max(1000000, "Price cannot exceed 1,000,000")
+            .typeError("Price must be a number"),
+        })
+      )
+      .min(1, "At least one item is required")
+      .required("Items are required"),
+    discount: Yup.number()
+      .optional()
+      .min(0, "Discount cannot be negative")
+      .max(100, "Discount cannot exceed 100%")
+      .typeError("Discount must be a number"),
+    notes: Yup.string()
+      .optional()
+      .max(500, "Notes cannot exceed 500 characters"),
+    bankName: Yup.string()
+      .optional()
+      .max(100, "Bank name cannot exceed 100 characters"),
+    accountName: Yup.string()
+      .optional()
+      .max(100, "Account name cannot exceed 100 characters"),
+    accountNumber: Yup.string()
+      .optional()
+      .matches(/^\d{9,18}$/, {
+        message: "Account number must be 9 to 18 digits",
+        excludeEmptyString: true,
+      }),
+    ifscCode: Yup.string()
+      .optional()
+      .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, {
+        message: "Invalid IFSC code format",
+        excludeEmptyString: true,
+      }),
+  });
 
   useEffect(() => {
-    const fetchBill = async () => {
+    const fetchBillAndUserState = async () => {
       try {
+        // Fetch user state
+        if (currentUser) {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setUserState(userSnap.data().address?.state || "");
+          }
+        }
+
+        // Fetch bill
         const docRef = doc(db, "bills", billId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const billData = { id: docSnap.id, ...docSnap.data() };
-          // Sanitize items to ensure price and quantity are numbers
           const sanitizedBill = {
             ...billData,
             items: (billData.items || []).map((item) => ({
@@ -146,18 +284,33 @@ const ViewBill = () => {
             discountAmount: parseFloat(billData.discountAmount) || 0,
             cgst: parseFloat(billData.cgst) || 0,
             sgst: parseFloat(billData.sgst) || 0,
+            igst: parseFloat(billData.igst) || 0,
+            discount: parseFloat(billData.discount) || 0,
+            date: billData.date
+              ? format(new Date(billData.date), "yyyy-MM-dd")
+              : format(new Date(), "yyyy-MM-dd"),
+            bankName: billData.bankName || "",
+            accountName: billData.accountName || "",
+            accountNumber: billData.accountNumber || "",
+            ifscCode: billData.ifscCode || "",
+            challanNo: billData.challanNo || "",
           };
           setBill(sanitizedBill);
-          setEditedBill(sanitizedBill);
+          formik.setValues(sanitizedBill);
         }
       } catch (error) {
         console.error("Error fetching bill: ", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to fetch invoice",
+          severity: "error",
+        });
       } finally {
         setLoading(false);
       }
     };
-    fetchBill();
-  }, [billId]);
+    fetchBillAndUserState();
+  }, [billId, currentUser]);
 
   const formatAddress = (address) => {
     if (!address || typeof address !== "object") return "N/A";
@@ -168,55 +321,100 @@ const ViewBill = () => {
       .join(", ");
   };
 
-  const calculateTotals = () => {
-    const subtotal = editedBill.items.reduce(
-      (sum, item) => sum + item.quantity * item.price,
+  const calculateTotals = (values) => {
+    const subtotal = values.items.reduce(
+      (sum, item) =>
+        sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0),
       0
     );
-    const discountAmount = subtotal * (editedBill.discount / 100);
+    const discountAmount =
+      subtotal * ((parseFloat(values.discount) || 0) / 100);
     const taxableAmount = subtotal - discountAmount;
-    const cgst = taxableAmount * (editedBill.gstRate / 100 / 2);
-    const sgst = taxableAmount * (editedBill.gstRate / 100 / 2);
-    const total = taxableAmount + cgst + sgst;
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, total };
+    const isInterState = values.partyDetails?.state !== userState;
+    const cgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
+    const sgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
+    const igst = isInterState ? taxableAmount * (values.gstRate / 100) : 0;
+    const total = taxableAmount + (isInterState ? igst : cgst + sgst);
+    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
   };
+
+  const formik = useFormik({
+    initialValues: {
+      billNo: "",
+      date: format(new Date(), "yyyy-MM-dd"),
+      partyDetails: {
+        companyName: "",
+        gstNo: "",
+        mobileNo: "",
+        plotHouseNo: "",
+        line1: "",
+        area: "",
+        landmark: "",
+        state: "",
+        city: "",
+        pincode: "",
+      },
+      paymentMethod: "cheque",
+      gstRate: 0,
+      status: "pending",
+      notes: "",
+      items: [{ name: "", hsn: "", quantity: "", price: "" }],
+      discount: "",
+      challanNo: "",
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      ifscCode: "",
+    },
+    validationSchema,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      try {
+        const {
+          subtotal,
+          discountAmount,
+          taxableAmount,
+          cgst,
+          sgst,
+          igst,
+          total,
+        } = calculateTotals(values);
+        const updatedBill = {
+          ...values,
+          subtotal,
+          discount: parseFloat(values.discount) || 0,
+          discountAmount,
+          taxableAmount,
+          cgst,
+          sgst,
+          igst,
+          total,
+          updatedAt: new Date().toISOString(),
+        };
+        const docRef = doc(db, "bills", billId);
+        await updateDoc(docRef, updatedBill);
+        setBill(updatedBill);
+        setIsEditing(false);
+        setSnackbar({
+          open: true,
+          message: "Invoice updated successfully!",
+          severity: "success",
+        });
+      } catch (error) {
+        console.error("Error updating bill: ", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to update invoice",
+          severity: "error",
+        });
+      }
+    },
+  });
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
     if (isEditing) {
-      setEditedBill(bill);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      const { subtotal, discountAmount, taxableAmount, cgst, sgst, total } =
-        calculateTotals();
-      const updatedBill = {
-        ...editedBill,
-        subtotal,
-        discountAmount,
-        taxableAmount,
-        cgst,
-        sgst,
-        total,
-      };
-      const docRef = doc(db, "bills", billId);
-      await updateDoc(docRef, updatedBill);
-      setBill(updatedBill);
-      setIsEditing(false);
-      setSnackbar({
-        open: true,
-        message: "Invoice updated successfully!",
-        severity: "success",
-      });
-    } catch (error) {
-      console.error("Error updating bill: ", error);
-      setSnackbar({
-        open: true,
-        message: "Failed to update invoice",
-        severity: "error",
-      });
+      formik.setValues(bill);
     }
   };
 
@@ -241,45 +439,15 @@ const ViewBill = () => {
     }
   };
 
-  const handleInputChange = (field, value) => {
-    setEditedBill((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleAddressChange = (field, value) => {
-    setEditedBill((prev) => ({
-      ...prev,
-      partyDetails: {
-        ...prev.partyDetails,
-        [field]: value,
-        ...(field === "state" && { city: "" }), // Reset city when state changes
-      },
-    }));
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const updatedItems = [...editedBill.items];
-    updatedItems[index][field] =
-      field === "quantity" || field === "price" ? Number(value) || 0 : value;
-    setEditedBill((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-  };
-
   const handleAddItem = () => {
-    setEditedBill((prev) => ({
-      ...prev,
-      items: [...prev.items, { ...newItem }],
-    }));
-    setNewItem({ name: "", hsn: "", quantity: 0, price: 0 });
+    const newItems = [...formik.values.items, { ...newItem }];
+    formik.setFieldValue("items", newItems);
+    setNewItem({ name: "", hsn: "", quantity: "", price: "" });
     setOpenAddItem(false);
   };
 
   const handleDeleteItem = (index) => {
-    if (editedBill.items.length <= 1) {
+    if (formik.values.items.length <= 1) {
       setSnackbar({
         open: true,
         message: "An invoice must have at least one item",
@@ -287,11 +455,8 @@ const ViewBill = () => {
       });
       return;
     }
-    const updatedItems = editedBill.items.filter((_, i) => i !== index);
-    setEditedBill((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
+    const updatedItems = formik.values.items.filter((_, i) => i !== index);
+    formik.setFieldValue("items", updatedItems);
   };
 
   const handleCloseSnackbar = () => {
@@ -316,7 +481,7 @@ const ViewBill = () => {
 
   if (!bill) {
     return (
-      <Container sx={{ mt: 4, px: { xs: 2, sm: 3 } }}>
+      <Container sx={{ mt: 4, px: { xs: 1, sm: 2 } }}>
         <Paper
           elevation={3}
           sx={{
@@ -343,165 +508,171 @@ const ViewBill = () => {
     );
   }
 
-  const { subtotal, discountAmount, taxableAmount, cgst, sgst, total } =
-    calculateTotals();
+  const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
+    calculateTotals(formik.values);
 
   return (
-    <Container sx={{ mt: 4, mb: 4, px: { xs: 2, sm: 3 } }}>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "stretch", sm: "center" },
-          gap: 2,
-        }}
-      >
-        <Button
-          component={Link}
-          to={`/party-bills/${bill.partyId}`}
-          startIcon={<ArrowBack />}
-          variant="outlined"
-          size="medium"
-          sx={{ width: { xs: "100%", sm: "auto" } }}
-        >
-          Back to Party Invoices
-        </Button>
-        <Box
-          sx={{
-            display: "flex",
-            gap: 1.5,
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            p: 1,
-          }}
-        >
-          {isEditing ? (
-            <>
-              <Tooltip title="Save Changes">
-                <IconButton
-                  onClick={handleSave}
-                  size="medium"
-                  sx={{
-                    bgcolor: "success.main",
-                    color: "common.white",
-                    borderRadius: "12px",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      bgcolor: "success.dark",
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
-                  <Save />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Cancel Editing">
-                <IconButton
-                  onClick={handleEditToggle}
-                  size="medium"
-                  sx={{
-                    bgcolor: "error.main",
-                    color: "common.white",
-                    borderRadius: "12px",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      bgcolor: "error.dark",
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
-                  <Cancel />
-                </IconButton>
-              </Tooltip>
-            </>
-          ) : (
-            <>
-              <Tooltip title="Edit Invoice">
-                <IconButton
-                  onClick={handleEditToggle}
-                  size="medium"
-                  sx={{
-                    bgcolor: "primary.main",
-                    color: "common.white",
-                    borderRadius: "12px",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      bgcolor: "primary.dark",
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
-                  <Edit />
-                </IconButton>
-              </Tooltip>
-
-              <PDFDownloadLink
-                document={<BillPDF bill={bill} user={userProfile} />}
-                fileName={`invoice_${bill.billNo}.pdf`}
-              >
-                {({ loading }) => (
-                  <Tooltip title="Download PDF">
-                    <span>
-                      <IconButton
-                        disabled={loading}
-                        size="medium"
-                        sx={{
-                          bgcolor: loading ? "grey.400" : "secondary.main",
-                          color: "common.white",
-                          borderRadius: "12px",
-                          boxShadow: 3,
-                          transition: "all 0.3s ease",
-                          "&:hover": {
-                            bgcolor: loading ? "grey.500" : "secondary.dark",
-                            transform: loading ? "none" : "scale(1.05)",
-                          },
-                        }}
-                      >
-                        <PictureAsPdf />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                )}
-              </PDFDownloadLink>
-
-              <Tooltip title="Delete Invoice">
-                <IconButton
-                  onClick={() => setOpenDeleteDialog(true)}
-                  size="medium"
-                  sx={{
-                    bgcolor: "error.main",
-                    color: "common.white",
-                    borderRadius: "12px",
-                    boxShadow: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      bgcolor: "error.dark",
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
-                  <Delete />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-        </Box>
-      </Box>
-
+    <Container
+      maxWidth="lg"
+      sx={{
+        mt: { xs: 2, sm: 3, md: 4 },
+        mb: { xs: 2, sm: 3, md: 4 },
+        px: { xs: 1, sm: 2 },
+      }}
+    >
       <Paper
         elevation={3}
         sx={{
           p: { xs: 2, sm: 3, md: 4 },
           borderRadius: 2,
-          maxWidth: "100%",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
+        <Box
+          sx={{
+            mb: 3,
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            justifyContent: "space-between",
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 2,
+          }}
+        >
+          <Button
+            component={Link}
+            to={`/party-bills/${bill.partyId}`}
+            startIcon={<ArrowBack />}
+            variant="outlined"
+            size="medium"
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
+            Back to Party Invoices
+          </Button>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1.5,
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              p: 1,
+            }}
+          >
+            {isEditing ? (
+              <>
+                <Tooltip title="Save Changes">
+                  <IconButton
+                    onClick={formik.handleSubmit}
+                    size="medium"
+                    sx={{
+                      bgcolor: "success.main",
+                      color: "common.white",
+                      borderRadius: "12px",
+                      boxShadow: 3,
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        bgcolor: "success.dark",
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                  >
+                    <Save />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Cancel Editing">
+                  <IconButton
+                    onClick={handleEditToggle}
+                    size="medium"
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "common.white",
+                      borderRadius: "12px",
+                      boxShadow: 3,
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        bgcolor: "error.dark",
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                  >
+                    <Cancel />
+                  </IconButton>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <Tooltip title="Edit Invoice">
+                  <IconButton
+                    onClick={handleEditToggle}
+                    size="medium"
+                    sx={{
+                      bgcolor: "primary.main",
+                      color: "common.white",
+                      borderRadius: "12px",
+                      boxShadow: 3,
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                  >
+                    <Edit />
+                  </IconButton>
+                </Tooltip>
+                <PDFDownloadLink
+                  document={<BillPDF bill={bill} user={userProfile} />}
+                  fileName={`invoice_${bill.billNo}.pdf`}
+                >
+                  {({ loading }) => (
+                    <Tooltip title="Download PDF">
+                      <span>
+                        <IconButton
+                          disabled={loading}
+                          size="medium"
+                          sx={{
+                            bgcolor: loading ? "grey.400" : "secondary.main",
+                            color: "common.white",
+                            borderRadius: "12px",
+                            boxShadow: 3,
+                            transition: "all 0.3s ease",
+                            "&:hover": {
+                              bgcolor: loading ? "grey.500" : "secondary.dark",
+                              transform: loading ? "none" : "scale(1.05)",
+                            },
+                          }}
+                        >
+                          <PictureAsPdf />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
+                </PDFDownloadLink>
+                <Tooltip title="Delete Invoice">
+                  <IconButton
+                    onClick={() => setOpenDeleteDialog(true)}
+                    size="medium"
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "common.white",
+                      borderRadius: "12px",
+                      boxShadow: 3,
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        bgcolor: "error.dark",
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
+          </Box>
+        </Box>
+
         <Grid
           container
           justifyContent="space-between"
@@ -523,14 +694,14 @@ const ViewBill = () => {
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+              sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
             >
               GSTIN: {userProfile?.gstNo || "N/A"}
             </Typography>
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+              sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
             >
               Address: {formatAddress(userProfile?.address)}
             </Typography>
@@ -554,13 +725,46 @@ const ViewBill = () => {
             </Typography>
             <Typography
               variant="subtitle1"
-              sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+              sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
             >
               <strong>Invoice No.:</strong> {bill.billNo}
             </Typography>
+            <Box
+              sx={{
+                fontSize: { xs: "1rem", sm: "1rem" },
+                color: "text.primary",
+                mb: 1,
+              }}
+            >
+              {isEditing ? (
+                <TextField
+                  label="Party Challan No *"
+                  name="challanNo"
+                  value={formik.values.challanNo}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.challanNo && Boolean(formik.errors.challanNo)
+                  }
+                  helperText={
+                    formik.touched.challanNo && formik.errors.challanNo
+                  }
+                  sx={{ mt: 1.5, mb: 1.5 }}
+                  variant="outlined"
+                  size="small"
+                />
+              ) : (
+                <Typography
+                  variant="body2"
+                  sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
+                >
+                  <strong>Challan No.:</strong> {bill.challanNo || "N/A"}
+                </Typography>
+              )}
+            </Box>
             <Typography
               variant="body2"
-              sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+              sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
             >
               <strong>Date:</strong> {format(new Date(bill.date), "dd-MM-yyyy")}
             </Typography>
@@ -583,10 +787,18 @@ const ViewBill = () => {
               <>
                 <TextField
                   fullWidth
-                  label="Company Name"
-                  value={editedBill.partyDetails.companyName || ""}
-                  onChange={(e) =>
-                    handleAddressChange("companyName", e.target.value)
+                  label="Company Name *"
+                  name="partyDetails.companyName"
+                  value={formik.values.partyDetails.companyName}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.companyName &&
+                    Boolean(formik.errors.partyDetails?.companyName)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.companyName &&
+                    formik.errors.partyDetails?.companyName
                   }
                   sx={{ mb: 2 }}
                   variant="outlined"
@@ -594,9 +806,19 @@ const ViewBill = () => {
                 />
                 <TextField
                   fullWidth
-                  label="GSTIN"
-                  value={editedBill.partyDetails.gstNo || ""}
-                  onChange={(e) => handleAddressChange("gstNo", e.target.value)}
+                  label="GSTIN *"
+                  name="partyDetails.gstNo"
+                  value={formik.values.partyDetails.gstNo}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.gstNo &&
+                    Boolean(formik.errors.partyDetails?.gstNo)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.gstNo &&
+                    formik.errors.partyDetails?.gstNo
+                  }
                   sx={{ mb: 2 }}
                   variant="outlined"
                   size="small"
@@ -604,9 +826,17 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Mobile"
-                  value={editedBill.partyDetails.mobileNo || ""}
-                  onChange={(e) =>
-                    handleAddressChange("mobileNo", e.target.value)
+                  name="partyDetails.mobileNo"
+                  value={formik.values.partyDetails.mobileNo}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.mobileNo &&
+                    Boolean(formik.errors.partyDetails?.mobileNo)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.mobileNo &&
+                    formik.errors.partyDetails?.mobileNo
                   }
                   sx={{ mb: 2 }}
                   variant="outlined"
@@ -615,9 +845,17 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Plot/House No"
-                  value={editedBill.partyDetails.plotHouseNo || ""}
-                  onChange={(e) =>
-                    handleAddressChange("plotHouseNo", e.target.value)
+                  name="partyDetails.plotHouseNo"
+                  value={formik.values.partyDetails.plotHouseNo}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.plotHouseNo &&
+                    Boolean(formik.errors.partyDetails?.plotHouseNo)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.plotHouseNo &&
+                    formik.errors.partyDetails?.plotHouseNo
                   }
                   sx={{ mb: 2 }}
                   variant="outlined"
@@ -626,8 +864,18 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Line 1"
-                  value={editedBill.partyDetails.line1 || ""}
-                  onChange={(e) => handleAddressChange("line1", e.target.value)}
+                  name="partyDetails.line1"
+                  value={formik.values.partyDetails.line1}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.line1 &&
+                    Boolean(formik.errors.partyDetails?.line1)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.line1 &&
+                    formik.errors.partyDetails?.line1
+                  }
                   sx={{ mb: 2 }}
                   variant="outlined"
                   size="small"
@@ -635,8 +883,18 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Area"
-                  value={editedBill.partyDetails.area || ""}
-                  onChange={(e) => handleAddressChange("area", e.target.value)}
+                  name="partyDetails.area"
+                  value={formik.values.partyDetails.area}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.area &&
+                    Boolean(formik.errors.partyDetails?.area)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.area &&
+                    formik.errors.partyDetails?.area
+                  }
                   sx={{ mb: 2 }}
                   variant="outlined"
                   size="small"
@@ -644,23 +902,35 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Landmark"
-                  value={editedBill.partyDetails.landmark || ""}
-                  onChange={(e) =>
-                    handleAddressChange("landmark", e.target.value)
+                  name="partyDetails.landmark"
+                  value={formik.values.partyDetails.landmark}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.landmark &&
+                    Boolean(formik.errors.partyDetails?.landmark)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.landmark &&
+                    formik.errors.partyDetails?.landmark
                   }
                   sx={{ mb: 2 }}
                   variant="outlined"
                   size="small"
                 />
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>State</InputLabel>
+                  <InputLabel>State *</InputLabel>
                   <Select
-                    value={editedBill.partyDetails.state || ""}
-                    onChange={(e) =>
-                      handleAddressChange("state", e.target.value)
-                    }
-                    label="State"
+                    name="partyDetails.state"
+                    value={formik.values.partyDetails.state}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    label="State *"
                     size="small"
+                    error={
+                      formik.touched.partyDetails?.state &&
+                      Boolean(formik.errors.partyDetails?.state)
+                    }
                   >
                     {Object.keys(stateCities).map((state) => (
                       <MenuItem key={state} value={state}>
@@ -668,19 +938,33 @@ const ViewBill = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {formik.touched.partyDetails?.state &&
+                    formik.errors.partyDetails?.state && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
+                        {formik.errors.partyDetails.state}
+                      </Typography>
+                    )}
                 </FormControl>
                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>City</InputLabel>
+                  <InputLabel>City *</InputLabel>
                   <Select
-                    value={editedBill.partyDetails.city || ""}
-                    onChange={(e) =>
-                      handleAddressChange("city", e.target.value)
-                    }
-                    label="City"
+                    name="partyDetails.city"
+                    value={formik.values.partyDetails.city}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    label="City *"
                     size="small"
-                    disabled={!editedBill.partyDetails.state}
+                    disabled={!formik.values.partyDetails.state}
+                    error={
+                      formik.touched.partyDetails?.city &&
+                      Boolean(formik.errors.partyDetails?.city)
+                    }
                   >
-                    {(stateCities[editedBill.partyDetails.state] || []).map(
+                    {(stateCities[formik.values.partyDetails.state] || []).map(
                       (city) => (
                         <MenuItem key={city} value={city}>
                           {city}
@@ -688,13 +972,31 @@ const ViewBill = () => {
                       )
                     )}
                   </Select>
+                  {formik.touched.partyDetails?.city &&
+                    formik.errors.partyDetails?.city && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
+                        {formik.errors.partyDetails.city}
+                      </Typography>
+                    )}
                 </FormControl>
                 <TextField
                   fullWidth
                   label="Pincode"
-                  value={editedBill.partyDetails.pincode || ""}
-                  onChange={(e) =>
-                    handleAddressChange("pincode", e.target.value)
+                  name="partyDetails.pincode"
+                  value={formik.values.partyDetails.pincode}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.partyDetails?.pincode &&
+                    Boolean(formik.errors.partyDetails?.pincode)
+                  }
+                  helperText={
+                    formik.touched.partyDetails?.pincode &&
+                    formik.errors.partyDetails?.pincode
                   }
                   sx={{ mb: 2 }}
                   variant="outlined"
@@ -724,6 +1026,7 @@ const ViewBill = () => {
               </>
             )}
           </Grid>
+
           <Grid item xs={12} md={6}>
             <Typography
               variant="subtitle1"
@@ -737,29 +1040,43 @@ const ViewBill = () => {
             </Typography>
             {isEditing ? (
               <>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Payment Method</InputLabel>
+                {/* <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Payment Method *</InputLabel>
                   <Select
-                    value={editedBill.paymentMethod}
-                    onChange={(e) =>
-                      handleInputChange("paymentMethod", e.target.value)
-                    }
-                    label="Payment Method"
+                    name="paymentMethod"
+                    value={formik.values.paymentMethod}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    label="Payment Method *"
                     size="small"
+                    error={
+                      formik.touched.paymentMethod &&
+                      Boolean(formik.errors.paymentMethod)
+                    }
                   >
                     <MenuItem value="cheque">Cheque</MenuItem>
                     <MenuItem value="cash">Cash</MenuItem>
                     <MenuItem value="upi">UPI</MenuItem>
                     <MenuItem value="netbanking">Net Banking</MenuItem>
                   </Select>
-                </FormControl>
+                  {formik.touched.paymentMethod &&
+                    formik.errors.paymentMethod && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
+                        {formik.errors.paymentMethod}
+                      </Typography>
+                    )}
+                </FormControl> */}
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
                   <Select
-                    value={editedBill.status}
-                    onChange={(e) =>
-                      handleInputChange("status", e.target.value)
-                    }
+                    name="status"
+                    value={formik.values.status}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
                     label="Status"
                     size="small"
                   >
@@ -795,12 +1112,25 @@ const ViewBill = () => {
           </Grid>
         </Grid>
 
+        <Typography
+          variant={isMobile ? "h6" : "h5"}
+          gutterBottom
+          sx={{
+            mt: 3,
+            mb: 2,
+            color: "text.primary",
+            textAlign: { xs: "center", sm: "left" },
+            fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+          }}
+        >
+          Item Details
+        </Typography>
         <TableContainer
           component={Paper}
           elevation={2}
           sx={{ mb: 4, borderRadius: 2, overflowX: "auto" }}
         >
-          <Table sx={{ minWidth: { xs: 600, sm: 650 } }}>
+          <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: "primary.light" }}>
                 <TableCell
@@ -892,8 +1222,8 @@ const ViewBill = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {editedBill.items && editedBill.items.length > 0 ? (
-                editedBill.items.map((item, index) => (
+              {formik.values.items && formik.values.items.length > 0 ? (
+                formik.values.items.map((item, index) => (
                   <TableRow key={index} hover>
                     <TableCell
                       sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
@@ -905,12 +1235,25 @@ const ViewBill = () => {
                     >
                       {isEditing ? (
                         <TextField
-                          value={item.name}
-                          onChange={(e) =>
-                            handleItemChange(index, "name", e.target.value)
-                          }
-                          size="small"
                           fullWidth
+                          size="small"
+                          name={`items[${index}].name`}
+                          value={item.name}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                          error={
+                            formik.touched.items &&
+                            formik.touched.items[index]?.name &&
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.name
+                            )
+                          }
+                          helperText={
+                            formik.touched.items &&
+                            formik.errors.items &&
+                            formik.errors.items[index]?.name
+                          }
                           sx={{
                             minWidth: { xs: 100, sm: 150 },
                             "& .MuiInputBase-root": {
@@ -930,12 +1273,25 @@ const ViewBill = () => {
                     >
                       {isEditing ? (
                         <TextField
-                          value={item.hsn}
-                          onChange={(e) =>
-                            handleItemChange(index, "hsn", e.target.value)
-                          }
-                          size="small"
                           fullWidth
+                          size="small"
+                          name={`items[${index}].hsn`}
+                          value={item.hsn}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                          error={
+                            formik.touched.items &&
+                            formik.touched.items[index]?.hsn &&
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.hsn
+                            )
+                          }
+                          helperText={
+                            formik.touched.items &&
+                            formik.errors.items &&
+                            formik.errors.items[index]?.hsn
+                          }
                           sx={{
                             minWidth: { xs: 80, sm: 120 },
                             "& .MuiInputBase-root": {
@@ -947,7 +1303,7 @@ const ViewBill = () => {
                           }}
                         />
                       ) : (
-                        item.hsn
+                        item.hsn || "N/A"
                       )}
                     </TableCell>
                     <TableCell
@@ -955,13 +1311,27 @@ const ViewBill = () => {
                     >
                       {isEditing ? (
                         <TextField
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleItemChange(index, "quantity", e.target.value)
-                          }
-                          size="small"
                           fullWidth
+                          size="small"
+                          type="number"
+                          name={`items[${index}].quantity`}
+                          value={item.quantity}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                          inputProps={{ min: 1 }}
+                          error={
+                            formik.touched.items &&
+                            formik.touched.items[index]?.quantity &&
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.quantity
+                            )
+                          }
+                          helperText={
+                            formik.touched.items &&
+                            formik.errors.items &&
+                            formik.errors.items[index]?.quantity
+                          }
                           sx={{
                             minWidth: { xs: 60, sm: 80 },
                             "& .MuiInputBase-root": {
@@ -971,7 +1341,6 @@ const ViewBill = () => {
                               color: "error.main",
                             },
                           }}
-                          inputProps={{ min: 1 }}
                         />
                       ) : (
                         item.quantity
@@ -982,13 +1351,27 @@ const ViewBill = () => {
                     >
                       {isEditing ? (
                         <TextField
-                          type="number"
-                          value={item.price}
-                          onChange={(e) =>
-                            handleItemChange(index, "price", e.target.value)
-                          }
-                          size="small"
                           fullWidth
+                          size="small"
+                          type="number"
+                          name={`items[${index}].price`}
+                          value={item.price}
+                          onChange={formik.handleChange}
+                          onBlur={formik.handleBlur}
+                          inputProps={{ min: 0, step: 0.01 }}
+                          error={
+                            formik.touched.items &&
+                            formik.touched.items[index]?.price &&
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.price
+                            )
+                          }
+                          helperText={
+                            formik.touched.items &&
+                            formik.errors.items &&
+                            formik.errors.items[index]?.price
+                          }
                           sx={{
                             minWidth: { xs: 80, sm: 100 },
                             "& .MuiInputBase-root": {
@@ -998,7 +1381,6 @@ const ViewBill = () => {
                               color: "error.main",
                             },
                           }}
-                          inputProps={{ min: 0, step: 0.01 }}
                         />
                       ) : (
                         `₹${(Number(item.price) || 0).toFixed(2)}`
@@ -1079,15 +1461,16 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Discount (%)"
+                  name="discount"
                   type="number"
-                  value={editedBill.discount || 0}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "discount",
-                      Math.min(100, Math.max(0, Number(e.target.value) || 0))
-                    )
-                  }
+                  value={formik.values.discount}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   inputProps={{ min: 0, max: 100, step: 0.01 }}
+                  error={
+                    formik.touched.discount && Boolean(formik.errors.discount)
+                  }
+                  helperText={formik.touched.discount && formik.errors.discount}
                   sx={{ mb: 2 }}
                   variant="outlined"
                   size="small"
@@ -1095,10 +1478,14 @@ const ViewBill = () => {
                 <TextField
                   fullWidth
                   label="Notes"
-                  value={editedBill.notes || ""}
-                  onChange={(e) => handleInputChange("notes", e.target.value)}
+                  name="notes"
+                  value={formik.values.notes}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   multiline
                   rows={3}
+                  error={formik.touched.notes && Boolean(formik.errors.notes)}
+                  helperText={formik.touched.notes && formik.errors.notes}
                   sx={{
                     "& .MuiInputBase-root": {
                       fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1117,6 +1504,112 @@ const ViewBill = () => {
                 </Typography>
               </>
             )}
+
+            <Typography
+              variant="subtitle1"
+              gutterBottom
+              sx={{
+                fontWeight: "bold",
+                fontSize: { xs: "1rem", sm: "1.125rem" },
+                mt: 2,
+              }}
+            >
+              Bank Details:
+            </Typography>
+            {isEditing ? (
+              <>
+                <TextField
+                  fullWidth
+                  label="Bank Name"
+                  name="bankName"
+                  value={formik.values.bankName}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.bankName && Boolean(formik.errors.bankName)
+                  }
+                  helperText={formik.touched.bankName && formik.errors.bankName}
+                  sx={{ mb: 2 }}
+                  variant="outlined"
+                  size="small"
+                />
+                <TextField
+                  fullWidth
+                  label="Account Name"
+                  name="accountName"
+                  value={formik.values.accountName}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.accountName &&
+                    Boolean(formik.errors.accountName)
+                  }
+                  helperText={
+                    formik.touched.accountName && formik.errors.accountName
+                  }
+                  sx={{ mb: 2 }}
+                  variant="outlined"
+                  size="small"
+                />
+                <TextField
+                  fullWidth
+                  label="Account Number"
+                  name="accountNumber"
+                  value={formik.values.accountNumber}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.accountNumber &&
+                    Boolean(formik.errors.accountNumber)
+                  }
+                  helperText={
+                    formik.touched.accountNumber && formik.errors.accountNumber
+                  }
+                  sx={{ mb: 2 }}
+                  variant="outlined"
+                  size="small"
+                />
+                <TextField
+                  fullWidth
+                  label="IFSC Code"
+                  name="ifscCode"
+                  value={formik.values.ifscCode}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.ifscCode && Boolean(formik.errors.ifscCode)
+                  }
+                  helperText={formik.touched.ifscCode && formik.errors.ifscCode}
+                  sx={{ mb: 2 }}
+                  variant="outlined"
+                  size="small"
+                />
+              </>
+            ) : (
+              <>
+                <Typography
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
+                >
+                  <strong>Bank Name:</strong> {bill.bankName || "N/A"}
+                </Typography>
+                <Typography
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
+                >
+                  <strong>Account Name:</strong> {bill.accountName || "N/A"}
+                </Typography>
+                <Typography
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
+                >
+                  <strong>Account Number:</strong> {bill.accountNumber || "N/A"}
+                </Typography>
+                <Typography
+                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
+                >
+                  <strong>IFSC Code:</strong> {bill.ifscCode || "N/A"}
+                </Typography>
+              </>
+            )}
+
             <Typography
               variant="body1"
               gutterBottom
@@ -1153,7 +1646,7 @@ const ViewBill = () => {
                   <Typography
                     sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
                   >
-                    Discount ({editedBill.discount}%):
+                    Discount ({parseFloat(formik.values.discount) || 0}%):
                   </Typography>
                   <Typography
                     sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
@@ -1181,12 +1674,15 @@ const ViewBill = () => {
                   <FormControl fullWidth>
                     <InputLabel>GST Rate (%)</InputLabel>
                     <Select
-                      value={editedBill.gstRate}
-                      onChange={(e) =>
-                        handleInputChange("gstRate", Number(e.target.value))
-                      }
+                      name="gstRate"
+                      value={formik.values.gstRate}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
                       label="GST Rate (%)"
                       size="small"
+                      error={
+                        formik.touched.gstRate && Boolean(formik.errors.gstRate)
+                      }
                     >
                       <MenuItem value={0}>0% (Exempt)</MenuItem>
                       <MenuItem value={5}>5%</MenuItem>
@@ -1194,38 +1690,67 @@ const ViewBill = () => {
                       <MenuItem value={18}>18%</MenuItem>
                       <MenuItem value={28}>28%</MenuItem>
                     </Select>
+                    {formik.touched.gstRate && formik.errors.gstRate && (
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
+                        {formik.errors.gstRate}
+                      </Typography>
+                    )}
                   </FormControl>
                 </Box>
               ) : (
                 <>
-                  <Box sx={{ mb: 1 }}>
-                    <Grid container justifyContent="space-between">
-                      <Typography
-                        sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
-                      >
-                        CGST ({bill.gstRate / 2}%):
-                      </Typography>
-                      <Typography
-                        sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
-                      >
-                        ₹{cgst.toFixed(2)}
-                      </Typography>
-                    </Grid>
-                  </Box>
-                  <Box sx={{ mb: 1 }}>
-                    <Grid container justifyContent="space-between">
-                      <Typography
-                        sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
-                      >
-                        SGST ({bill.gstRate / 2}%):
-                      </Typography>
-                      <Typography
-                        sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
-                      >
-                        ₹{sgst.toFixed(2)}
-                      </Typography>
-                    </Grid>
-                  </Box>
+                  {cgst > 0 && (
+                    <Box sx={{ mb: 1 }}>
+                      <Grid container justifyContent="space-between">
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          CGST ({bill.gstRate / 2}%):
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          ₹{cgst.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                    </Box>
+                  )}
+                  {sgst > 0 && (
+                    <Box sx={{ mb: 1 }}>
+                      <Grid container justifyContent="space-between">
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          SGST ({bill.gstRate / 2}%):
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          ₹{sgst.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                    </Box>
+                  )}
+                  {igst > 0 && (
+                    <Box sx={{ mb: 1 }}>
+                      <Grid container justifyContent="space-between">
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          IGST ({bill.gstRate}%):
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+                        >
+                          ₹{igst.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                    </Box>
+                  )}
                 </>
               )}
               <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: "divider" }}>
@@ -1248,140 +1773,140 @@ const ViewBill = () => {
             </Paper>
           </Grid>
         </Grid>
-      </Paper>
 
-      <Dialog
-        open={openAddItem}
-        onClose={() => setOpenAddItem(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Add New Item</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Item Name"
-            value={newItem.name}
-            onChange={(e) =>
-              setNewItem((prev) => ({ ...prev, name: e.target.value }))
-            }
-            sx={{ mt: 2 }}
-            variant="outlined"
-            size="small"
-          />
-          <TextField
-            fullWidth
-            label="HSN Code"
-            value={newItem.hsn}
-            onChange={(e) =>
-              setNewItem((prev) => ({ ...prev, hsn: e.target.value }))
-            }
-            sx={{ mt: 2 }}
-            variant="outlined"
-            size="small"
-          />
-          <TextField
-            fullWidth
-            type="number"
-            label="Quantity"
-            value={newItem.quantity}
-            onChange={(e) =>
-              setNewItem((prev) => ({
-                ...prev,
-                quantity: Number(e.target.value) || 1,
-              }))
-            }
-            sx={{ mt: 2 }}
-            inputProps={{ min: 1 }}
-            variant="outlined"
-            size="small"
-          />
-          <TextField
-            fullWidth
-            type="number"
-            label="Price (₹)"
-            value={newItem.price}
-            onChange={(e) =>
-              setNewItem((prev) => ({
-                ...prev,
-                price: Number(e.target.value) || 0,
-              }))
-            }
-            sx={{ mt: 2 }}
-            inputProps={{ min: 0, step: 0.01 }}
-            variant="outlined"
-            size="small"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setOpenAddItem(false)}
-            color="error"
-            size="medium"
-            sx={{ width: { xs: "100%", sm: "auto" } }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAddItem}
-            variant="contained"
-            color="primary"
-            size="medium"
-            sx={{ width: { xs: "100%", sm: "auto" } }}
-          >
-            Add Item
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Delete Invoice</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
-            Are you sure you want to delete Invoice #{bill.billNo}? This action
-            cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setOpenDeleteDialog(false)}
-            color="error"
-            size="medium"
-            sx={{ width: { xs: "100%", sm: "auto" } }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDelete}
-            variant="contained"
-            color="error"
-            size="medium"
-            sx={{ width: { xs: "100%", sm: "auto" } }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
+        <Dialog
+          open={openAddItem}
+          onClose={() => setOpenAddItem(false)}
+          fullWidth
+          maxWidth="sm"
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <DialogTitle>Add New Item</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Item Name *"
+              value={newItem.name}
+              onChange={(e) =>
+                setNewItem((prev) => ({ ...prev, name: e.target.value }))
+              }
+              sx={{ mt: 2 }}
+              variant="outlined"
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="HSN Code"
+              value={newItem.hsn}
+              onChange={(e) =>
+                setNewItem((prev) => ({ ...prev, hsn: e.target.value }))
+              }
+              sx={{ mt: 2 }}
+              variant="outlined"
+              size="small"
+            />
+            <TextField
+              fullWidth
+              type="number"
+              label="Quantity *"
+              value={newItem.quantity}
+              onChange={(e) =>
+                setNewItem((prev) => ({
+                  ...prev,
+                  quantity: e.target.value,
+                }))
+              }
+              sx={{ mt: 2 }}
+              inputProps={{ min: 1 }}
+              variant="outlined"
+              size="small"
+            />
+            <TextField
+              fullWidth
+              type="number"
+              label="Price (₹) *"
+              value={newItem.price}
+              onChange={(e) =>
+                setNewItem((prev) => ({
+                  ...prev,
+                  price: e.target.value,
+                }))
+              }
+              sx={{ mt: 2 }}
+              inputProps={{ min: 0, step: 0.01 }}
+              variant="outlined"
+              size="small"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenAddItem(false)}
+              color="error"
+              size="medium"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddItem}
+              variant="contained"
+              color="primary"
+              size="medium"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              Add Item
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={openDeleteDialog}
+          onClose={() => setOpenDeleteDialog(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Delete Invoice</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+              Are you sure you want to delete this invoice? This action cannot
+              be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenDeleteDialog(false)}
+              color="primary"
+              size="medium"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              color="error"
+              variant="contained"
+              size="medium"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ width: "100%", fontSize: { xs: "0.9rem", sm: "1rem" } }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Paper>
     </Container>
   );
 };

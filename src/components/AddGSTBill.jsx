@@ -52,7 +52,6 @@ import { numberToWords } from "../utils";
 const AddGSTBill = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   const [parties, setParties] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,6 +64,8 @@ const AddGSTBill = () => {
   const [nextBillNo, setNextBillNo] = useState(null);
   const { currentUser } = useAuth();
   const [openDialog, setOpenDialog] = useState(false);
+  const [userState, setUserState] = useState(""); 
+  const [userGSTCode, setUserGSTCode] = useState("");
 
   const validationSchema = Yup.object({
     partyId: Yup.string()
@@ -81,6 +82,10 @@ const AddGSTBill = () => {
       .required("Invoice date is required")
       .max(new Date(), "Date cannot be in the future")
       .typeError("Invalid date format"),
+    challanNo: Yup.string()
+      .required("Challan number is required")
+      .matches(/^[0-9-]{1,20}$/, "Invalid challan number format")
+      .max(20, "Challan number cannot exceed 20 characters"),
     items: Yup.array()
       .of(
         Yup.object({
@@ -125,6 +130,24 @@ const AddGSTBill = () => {
     notes: Yup.string()
       .optional()
       .max(500, "Notes cannot exceed 500 characters"),
+    bankName: Yup.string()
+      .optional()
+      .max(100, "Bank name cannot exceed 100 characters"),
+    accountName: Yup.string()
+      .optional()
+      .max(100, "Account name cannot exceed 100 characters"),
+    accountNumber: Yup.string()
+      .optional()
+      .matches(/^\d{9,18}$/, {
+        message: "Account number must be 9 to 18 digits",
+        excludeEmptyString: true,
+      }),
+    ifscCode: Yup.string()
+      .optional()
+      .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, {
+        message: "Invalid IFSC code format",
+        excludeEmptyString: true,
+      }),
   });
 
   const formik = useFormik({
@@ -138,6 +161,11 @@ const AddGSTBill = () => {
       notes: "",
       items: items,
       discount: "",
+      challanNo: "",
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      ifscCode: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -156,22 +184,20 @@ const AddGSTBill = () => {
         const billQuery = query(
           collection(db, "bills"),
           where("createdBy", "==", currentUser.uid),
-          where("partyId", "==", values.partyId),
           where("billNo", "==", values.billNo)
         );
         const existingBills = await getDocs(billQuery);
 
         if (!existingBills.empty) {
-          setError(
-            `Bill number ${values.billNo} already exists for this party`
-          );
+          setError(`Bill number ${values.billNo} already exists`);
           setIsSubmitting(false);
           return;
         }
 
-        const { subtotal, discountAmount, taxableAmount, cgst, sgst, total } =
+        const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
           calculateTotals();
         const selectedParty = parties.find((p) => p.id === values.partyId);
+        const isInterState = selectedParty.state !== userState;
 
         await addDoc(collection(db, "bills"), {
           ...values,
@@ -180,19 +206,16 @@ const AddGSTBill = () => {
           discount: parseFloat(discount) || 0,
           discountAmount,
           taxableAmount,
-          cgst,
-          sgst,
+          cgst: isInterState ? 0 : cgst,
+          sgst: isInterState ? 0 : sgst,
+          igst: isInterState ? igst : 0,
           total,
           partyDetails: selectedParty,
           createdAt: new Date().toISOString(),
           createdBy: currentUser.uid,
         });
 
-        const counterRef = doc(
-          db,
-          "billCounters",
-          `${currentUser.uid}_${values.partyId}`
-        );
+        const counterRef = doc(db, "billCounters", `${currentUser.uid}`);
         await setDoc(
           counterRef,
           { lastBillNo: values.billNo },
@@ -215,9 +238,10 @@ const AddGSTBill = () => {
   });
 
   useEffect(() => {
-    const fetchParties = async () => {
+    const fetchPartiesAndUserState = async () => {
       if (!currentUser) return;
       try {
+        // Fetch parties
         const q = query(
           collection(db, "parties"),
           where("createdBy", "==", currentUser.uid)
@@ -228,22 +252,26 @@ const AddGSTBill = () => {
           ...doc.data(),
         }));
         setParties(partiesData);
+
+        // Fetch user state (assuming stored in user profile)
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUserState(userSnap.data().address?.state || "");
+          setUserGSTCode(userSnap.data().gstCode || "");
+        }
       } catch (err) {
-        setError("Failed to fetch parties: " + err.message);
+        setError("Failed to fetch parties or user data: " + err.message);
       }
     };
-    fetchParties();
+    fetchPartiesAndUserState();
   }, [currentUser]);
 
   useEffect(() => {
-    const fetchNextBillNo = async (partyId) => {
-      if (!currentUser || !partyId) return;
+    const fetchNextBillNo = async () => {
+      if (!currentUser) return;
       try {
-        const counterRef = doc(
-          db,
-          "billCounters",
-          `${currentUser.uid}_${partyId}`
-        );
+        const counterRef = doc(db, "billCounters", `${currentUser.uid}`);
         const counterSnap = await getDoc(counterRef);
         if (counterSnap.exists()) {
           setNextBillNo(counterSnap.data().lastBillNo + 1);
@@ -255,10 +283,8 @@ const AddGSTBill = () => {
         setNextBillNo(1);
       }
     };
-    if (formik.values.partyId) {
-      fetchNextBillNo(formik.values.partyId);
-    }
-  }, [currentUser, formik.values.partyId]);
+    fetchNextBillNo();
+  }, [currentUser]);
 
   const calculateTotals = () => {
     const subtotal = items.reduce(
@@ -268,10 +294,15 @@ const AddGSTBill = () => {
     );
     const discountAmount = subtotal * ((parseFloat(discount) || 0) / 100);
     const taxableAmount = subtotal - discountAmount;
-    const cgst = taxableAmount * (formik.values.gstRate / 100 / 2);
-    const sgst = taxableAmount * (formik.values.gstRate / 100 / 2);
-    const total = taxableAmount + cgst + sgst;
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, total };
+    const selectedParty = parties.find((p) => p.id === formik.values.partyId);
+    const isInterState = selectedParty && selectedParty.state !== userState;
+
+    const cgst = isInterState ? 0 : taxableAmount * (formik.values.gstRate / 100 / 2);
+    const sgst = isInterState ? 0 : taxableAmount * (formik.values.gstRate / 100 / 2);
+    const igst = isInterState ? taxableAmount * (formik.values.gstRate / 100) : 0;
+    const total = taxableAmount + (isInterState ? igst : cgst + sgst);
+
+    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
   };
 
   const handleAddItem = () => {
@@ -296,9 +327,8 @@ const AddGSTBill = () => {
     formik.setFieldValue("items", newItems);
   };
 
-  const { subtotal, discountAmount, taxableAmount, cgst, sgst, total } =
+  const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
     calculateTotals();
-
   return (
     <Container
       maxWidth="lg"
@@ -407,7 +437,7 @@ const AddGSTBill = () => {
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12} sm={6} md={4}>
               <TextField
                 fullWidth
@@ -418,7 +448,27 @@ const AddGSTBill = () => {
                 InputProps={{
                   readOnly: true,
                 }}
-                helperText="Auto-generated based on party"
+                helperText="Auto-generated"
+                variant="outlined"
+                sx={{
+                  "& .MuiInputBase-root": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                id="challanNo"
+                name="challanNo"
+                label="Challan No *"
+                value={formik.values.challanNo}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.challanNo && Boolean(formik.errors.challanNo)}
+                helperText={formik.touched.challanNo && formik.errors.challanNo}
                 variant="outlined"
                 sx={{
                   "& .MuiInputBase-root": {
@@ -492,7 +542,7 @@ const AddGSTBill = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <FormControl
                 fullWidth
                 error={
@@ -555,7 +605,7 @@ const AddGSTBill = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <FormControl
                 fullWidth
                 error={formik.touched.gstRate && Boolean(formik.errors.gstRate)}
@@ -942,6 +992,22 @@ const AddGSTBill = () => {
             </Grid>
 
             <Grid item xs={12}>
+              <Typography
+                variant={isMobile ? "h6" : "h5"}
+                gutterBottom
+                sx={{
+                  mt: 3,
+                  mb: 2,
+                  color: "text.primary",
+                  textAlign: { xs: "center", sm: "left" },
+                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+                }}
+              >
+                Additional Details (Optional)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 id="discount"
@@ -999,6 +1065,102 @@ const AddGSTBill = () => {
             </Grid>
 
             <Grid item xs={12}>
+              <Typography
+                variant={isMobile ? "h6" : "h5"}
+                gutterBottom
+                sx={{
+                  mt: 3,
+                  mb: 2,
+                  color: "text.primary",
+                  textAlign: { xs: "center", sm: "left" },
+                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
+                }}
+              >
+                Bank Details (Optional)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                id="bankName"
+                name="bankName"
+                label="Bank Name"
+                value={formik.values.bankName}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.bankName && Boolean(formik.errors.bankName)}
+                helperText={formik.touched.bankName && formik.errors.bankName}
+                variant="outlined"
+                sx={{
+                  "& .MuiInputBase-root": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                id="accountName"
+                name="accountName"
+                label="Account Name"
+                value={formik.values.accountName}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.accountName && Boolean(formik.errors.accountName)}
+                helperText={formik.touched.accountName && formik.errors.accountName}
+                variant="outlined"
+                sx={{
+                  "& .MuiInputBase-root": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                id="accountNumber"
+                name="accountNumber"
+                label="Account Number"
+                value={formik.values.accountNumber}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.accountNumber && Boolean(formik.errors.accountNumber)}
+                helperText={formik.touched.accountNumber && formik.errors.accountNumber}
+                variant="outlined"
+                sx={{
+                  "& .MuiInputBase-root": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                id="ifscCode"
+                name="ifscCode"
+                label="IFSC Code"
+                value={formik.values.ifscCode}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.ifscCode && Boolean(formik.errors.ifscCode)}
+                helperText={formik.touched.ifscCode && formik.errors.ifscCode}
+                variant="outlined"
+                sx={{
+                  "& .MuiInputBase-root": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
               <Paper
                 elevation={2}
                 sx={{
@@ -1044,26 +1206,43 @@ const AddGSTBill = () => {
                       <strong>Taxable Amount:</strong> ₹
                       {taxableAmount.toFixed(2)}
                     </Typography>
-                    <Typography
-                      variant="body1"
-                      gutterBottom
-                      sx={{
-                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                      }}
-                    >
-                      <strong>CGST ({formik.values.gstRate / 2}%):</strong> ₹
-                      {cgst.toFixed(2)}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      gutterBottom
-                      sx={{
-                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                      }}
-                    >
-                      <strong>SGST ({formik.values.gstRate / 2}%):</strong> ₹
-                      {sgst.toFixed(2)}
-                    </Typography>
+                    {cgst > 0 && (
+                      
+                        <Typography
+                          variant="body1"
+                          gutterBottom
+                          sx={{
+                            fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                          }}
+                        >
+                          <strong>CGST ({formik.values.gstRate / 2}%):</strong> ₹
+                          {cgst.toFixed(2)}
+                        </Typography>
+                        )}
+                    {sgst > 0 && (
+                        <Typography
+                          variant="body1"
+                          gutterBottom
+                          sx={{
+                            fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                          }}
+                        >
+                          <strong>SGST ({formik.values.gstRate / 2}%):</strong> ₹
+                          {sgst.toFixed(2)}
+                        </Typography>
+                    )}
+                    {igst > 0 && (
+                      <Typography
+                        variant="body1"
+                        gutterBottom
+                        sx={{
+                          fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        }}
+                      >
+                        <strong>IGST ({formik.values.gstRate}%):</strong> ₹
+                        {igst.toFixed(2)}
+                      </Typography>
+                    )}
                     <Typography
                       variant="h6"
                       sx={{

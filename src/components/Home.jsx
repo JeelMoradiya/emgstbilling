@@ -29,7 +29,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import { Add, Search, Refresh } from "@mui/icons-material";
+import { Search } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { BarChart } from "@mui/x-charts/BarChart";
 
@@ -247,16 +247,6 @@ const Home = () => {
     applyFilters();
   };
 
-  const handleReset = () => {
-    setStartDate("");
-    setEndDate("");
-    setStatusFilter("All");
-    setPartySearch("");
-    setIsFilterApplied(false);
-    setFilteredBills(bills);
-    setPage(0);
-  };
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -322,110 +312,6 @@ const Home = () => {
       }}
     >
       <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
-        <Grid item xs={12} sm={6}>
-          <Card
-            elevation={3}
-            sx={{
-              borderRadius: 2,
-              width: "100%",
-              boxSizing: "border-box",
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: "bold",
-                  mb: 2,
-                  color: "primary.main",
-                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
-                }}
-              >
-                Add New Party
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mb: 3,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                }}
-              >
-                Register new business parties with their GST details
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                component={Link}
-                to="/add-party"
-                startIcon={<Add />}
-                size="large"
-                fullWidth
-                sx={{
-                  minWidth: { xs: "100%", sm: "160px" },
-                  height: { xs: "48px", sm: "56px" },
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
-                  textTransform: "none",
-                }}
-              >
-                Add Party
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Card
-            elevation={3}
-            sx={{
-              borderRadius: 2,
-              width: "100%",
-              boxSizing: "border-box",
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: "bold",
-                  mb: 2,
-                  color: "primary.main",
-                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
-                }}
-              >
-                Create GST Bill
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mb: 3,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                }}
-              >
-                Generate new GST invoices with tax calculations
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                component={Link}
-                to="/add-bill"
-                startIcon={<Add />}
-                size="large"
-                fullWidth
-                sx={{
-                  minWidth: { xs: "100%", sm: "160px" },
-                  height: { xs: "48px", sm: "56px" },
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
-                  textTransform: "none",
-                }}
-              >
-                Create Bill
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
         <Grid item xs={12}>
           <Paper
             elevation={3}
@@ -707,20 +593,6 @@ const Home = () => {
                   }}
                 >
                   <Search />
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={handleReset}
-                  size="large"
-                  sx={{
-                    minWidth: { xs: "100%", sm: "90px" },
-                    height: { xs: "48px", sm: "56px" },
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                    textTransform: "none",
-                  }}
-                >
-                  <Refresh />
                 </Button>
               </Box>
             </Box>

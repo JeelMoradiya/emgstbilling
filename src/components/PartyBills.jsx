@@ -126,12 +126,6 @@ const PartyBills = () => {
     fetchBillsAndParty();
   }, [partyId]);
 
-  useEffect(() => {
-    localStorage.setItem(`partyBills_${partyId}_startDate`, startDate);
-    localStorage.setItem(`partyBills_${partyId}_endDate`, endDate);
-    localStorage.setItem(`partyBills_${partyId}_statusFilter`, statusFilter);
-  }, [startDate, endDate, statusFilter, partyId]);
-
   const applyFilters = () => {
     let filtered = [...bills];
 
@@ -162,11 +156,10 @@ const PartyBills = () => {
   const handleSearch = () => {
     if (startDate && endDate) {
       setIsFilterApplied(true);
-      applyFilters();
     } else {
       setIsFilterApplied(false);
-      applyFilters();
     }
+    applyFilters();
   };
 
   const handleReset = () => {
@@ -191,6 +184,7 @@ const PartyBills = () => {
     setStatusFilter(event.target.value);
   };
 
+  // Auto-reset if all filters are cleared
   useEffect(() => {
     if (!startDate && !endDate) {
       setIsFilterApplied(false);
@@ -435,9 +429,8 @@ const PartyBills = () => {
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
-              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: 150 },
+                minWidth: { xs: "100%", sm: 250 },
                 "& .MuiInputBase-root": {
                   fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 },
@@ -452,9 +445,8 @@ const PartyBills = () => {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
-              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: 150 },
+                minWidth: { xs: "100%", sm: 250 },
                 "& .MuiInputBase-root": {
                   fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 },
@@ -464,9 +456,8 @@ const PartyBills = () => {
               }}
             />
             <FormControl
-              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: 120 },
+                minWidth: { xs: "100%", sm: 250 },
               }}
             >
               <InputLabel sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
@@ -489,27 +480,15 @@ const PartyBills = () => {
               variant="contained"
               color="primary"
               onClick={handleSearch}
-              startIcon={<Search />}
-              size="medium"
+              size="large"
               sx={{
-                width: { xs: "100%", sm: "auto" },
-                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                minWidth: { xs: "100%", sm: "90px" },
+                height: { xs: "50px", sm: "50px" },
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+                textTransform: "none",
               }}
             >
-              Search
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={handleReset}
-              startIcon={<Refresh />}
-              size="medium"
-              sx={{
-                width: { xs: "100%", sm: "auto" },
-                fontSize: { xs: "0.75rem", sm: "0.875rem" },
-              }}
-            >
-              Reset
+              <Search />
             </Button>
           </Box>
           <Button
@@ -518,10 +497,12 @@ const PartyBills = () => {
             component={Link}
             to={`/add-bill/${partyId}`}
             startIcon={<Add />}
-            size="medium"
+            size="large"
             sx={{
-              width: { xs: "100%", sm: "auto" },
-              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              minWidth: { xs: "100%", sm: "90px" },
+              height: { xs: "50px", sm: "50px" },
+              fontSize: { xs: "0.9rem", sm: "1rem" },
+              textTransform: "none",
             }}
           >
             Add New Bill

@@ -13,20 +13,44 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 30,
-    borderBottom: "2px solid #1976d2",
-    paddingBottom: 10,
+    alignItems: "flex-start",
+    marginBottom: 25,
+    paddingBottom: 12,
+    borderBottom: "1.5px solid #1a3c5e",
+  },
+  headerLeft: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  headerRight: {
+    alignItems: "flex-end",
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#1976d2",
-    marginBottom: 5,
+    color: "#1a3c5e",
+    marginBottom: 6,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 9,
-    color: "#666666",
-    marginTop: 3,
+    fontSize: 10,
+    color: "#5a6b7a",
+    lineHeight: 1.4,
+    marginTop: 2,
+  },
+  invoiceTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1a3c5e",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  invoiceDetail: {
+    fontSize: 10,
+    color: "#333333",
+    marginBottom: 4,
+    fontWeight: "normal",
   },
   section: {
     marginBottom: 20,
@@ -34,6 +58,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginRight: 10,
     marginBottom: 8,
   },
   table: {
@@ -58,7 +83,7 @@ const styles = StyleSheet.create({
     borderStyle: "solid",
     borderWidth: 1,
     borderColor: "#e0e0e0",
-    backgroundColor: "#1976d2",
+    backgroundColor: "#2c3e50",
     padding: 6,
   },
   tableCol: {
@@ -79,7 +104,6 @@ const styles = StyleSheet.create({
     color: "#333333",
     textAlign: "center",
     flexWrap: "wrap",
-    // Remove any potential superscript or special formatting
     verticalAlign: "middle",
   },
   amountSection: {
@@ -87,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 20,
     paddingTop: 15,
-    borderTop: "1px dashed #1976d2",
+    borderTop: "1px dashed #2c3e50",
   },
   amountBox: {
     width: "48%",
@@ -98,13 +122,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginBottom: 10,
   },
+  bankDetailsBox: {
+    backgroundColor: "#f5f5f5",
+    padding: 10,
+    borderRadius: 4,
+    marginBottom: 10,
+    marginTop: 10,
+  },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 10,
     backgroundColor: "#e3f2fd",
     borderRadius: 4,
-    border: "1px solid #1976d2",
+    border: "1px solid #2c3e50",
     marginTop: 10,
   },
   signatureSection: {
@@ -115,7 +146,7 @@ const styles = StyleSheet.create({
   signatureBox: {
     width: "48%",
     textAlign: "center",
-    borderTop: "1px solid #1976d2",
+    borderTop: "1px solid #2c3e50",
     paddingTop: 10,
     color: "#333333",
   },
@@ -127,7 +158,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 9,
     color: "#666666",
-    borderTop: "2px solid #1976d2",
+    borderTop: "2px solid #2c3e50",
     paddingTop: 5,
   },
 });
@@ -140,11 +171,10 @@ const formatAddress = (address) => {
     .join(", ");
 };
 
-
-
 const BillPDF = ({ bill = {}, user = {} }) => {
   const safeBill = {
     billNo: bill.billNo || "N/A",
+    challanNo: bill.challanNo || "N/A",
     date: bill.date || new Date(),
     partyDetails: bill.partyDetails || {},
     paymentMethod: bill.paymentMethod || "N/A",
@@ -157,8 +187,13 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     gstRate: bill.gstRate || 0,
     cgst: bill.cgst || 0,
     sgst: bill.sgst || 0,
+    igst: bill.igst || 0,
     total: bill.total || 0,
     notes: bill.notes || "",
+    bankName: bill.bankName || "N/A",
+    accountName: bill.accountName || "N/A",
+    accountNumber: bill.accountNumber || "N/A",
+    ifscCode: bill.ifscCode || "N/A",
   };
 
   const safeUser = {
@@ -171,29 +206,22 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text style={styles.title}>{safeUser.companyName}</Text>
             <Text style={styles.subtitle}>GSTIN: {safeUser.gstNo}</Text>
             <Text style={styles.subtitle}>
               Address: {formatAddress(safeUser.address)}
             </Text>
           </View>
-          <View>
-            <Text
-              style={{
-                fontWeight: "bold",
-                fontSize: 13,
-                color: "#1976d2",
-                marginTop: 2,
-                marginBottom: 3,
-              }}
-            >
-              TAX INVOICE
-            </Text>
-            <Text style={{ fontSize: 11, color: "#333333" }}>
+          <View style={styles.headerRight}>
+            <Text style={styles.invoiceTitle}>Tax Invoice</Text>
+            <Text style={styles.invoiceDetail}>
               Invoice No.: {safeBill.billNo}
             </Text>
-            <Text style={{ fontSize: 11, color: "#333333" }}>
+            <Text style={styles.invoiceDetail}>
+              Party Challan No.: {safeBill.challanNo}
+            </Text>
+            <Text style={styles.invoiceDetail}>
               Date: {format(new Date(safeBill.date), "dd-MM-yyyy")}
             </Text>
           </View>
@@ -206,7 +234,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
                 style={{
                   fontWeight: "bold",
                   marginBottom: 5,
-                  color: "#1976d2",
+                  color: "#2c3e50",
                 }}
               >
                 Billed To:
@@ -217,16 +245,16 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               <Text>Address: {formatAddress(safeBill.partyDetails)}</Text>
             </View>
             <View>
-              <Text
+              {/* <Text
                 style={{
                   fontWeight: "bold",
                   marginBottom: 5,
-                  color: "#1976d2",
+                  color: "#2c3e50",
                 }}
               >
                 Payment Details:
               </Text>
-              <Text>Method: {safeBill.paymentMethod.toUpperCase()}</Text>
+              <Text>Method: {safeBill.paymentMethod.toUpperCase()}</Text> */}
               <Text>Status: {safeBill.status.toUpperCase()}</Text>
             </View>
           </View>
@@ -274,12 +302,12 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  {item.price || 0}
+                  {item.price.toFixed(2) || 0}
                 </Text>
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  {(item.quantity || 0) * (item.price || 0)}
+                  {(item.quantity || 0) * (item.price || 0).toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -290,7 +318,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
           <View style={styles.amountBox}>
             {safeBill.notes && (
               <View style={styles.notesBox}>
-                <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+                <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
                   Additional Notes:
                 </Text>
                 <Text style={{ fontSize: 9, marginTop: 5 }}>
@@ -298,10 +326,40 @@ const BillPDF = ({ bill = {}, user = {} }) => {
                 </Text>
               </View>
             )}
-            <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+            {(safeBill.bankName ||
+              safeBill.accountName ||
+              safeBill.accountNumber ||
+              safeBill.ifscCode) && (
+              <View style={styles.bankDetailsBox}>
+                <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
+                  Bank Details:
+                </Text>
+                {safeBill.bankName !== "N/A" && (
+                  <Text style={{ fontSize: 10, marginTop: 5 }}>
+                    Bank Name: {safeBill.bankName}
+                  </Text>
+                )}
+                {safeBill.accountName !== "N/A" && (
+                  <Text style={{ fontSize: 10, marginTop: 5 }}>
+                    Account Name: {safeBill.accountName}
+                  </Text>
+                )}
+                {safeBill.accountNumber !== "N/A" && (
+                  <Text style={{ fontSize: 10, marginTop: 5 }}>
+                    Account Number: {safeBill.accountNumber}
+                  </Text>
+                )}
+                {safeBill.ifscCode !== "N/A" && (
+                  <Text style={{ fontSize: 10, marginTop: 5 }}>
+                    IFSC Code: {safeBill.ifscCode}
+                  </Text>
+                )}
+              </View>
+            )}
+            <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
               Amount in Words:
             </Text>
-            <Text style={{ fontSize: 9, marginTop: 5 }}>
+            <Text style={{ fontSize: 12, marginTop: 5 }}>
               {numberToWords(safeBill.total)}
             </Text>
           </View>
@@ -318,19 +376,29 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               <Text>Taxable Amount:</Text>
               <Text>{safeBill.taxableAmount.toFixed(2)}</Text>
             </View>
-            <View style={styles.row}>
-              <Text>CGST ({safeBill.gstRate / 2}%):</Text>
-              <Text>{safeBill.cgst.toFixed(2)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text>SGST ({safeBill.gstRate / 2}%):</Text>
-              <Text>{safeBill.sgst.toFixed(2)}</Text>
-            </View>
+            {safeBill.cgst > 0 && (
+              <View style={styles.row}>
+                <Text>CGST ({safeBill.gstRate / 2}%):</Text>
+                <Text>{safeBill.cgst.toFixed(2)}</Text>
+              </View>
+            )}
+            {safeBill.sgst > 0 && (
+              <View style={styles.row}>
+                <Text>SGST ({safeBill.gstRate / 2}%):</Text>
+                <Text>{safeBill.sgst.toFixed(2)}</Text>
+              </View>
+            )}
+            {safeBill.igst > 0 && (
+              <View style={styles.row}>
+                <Text>IGST ({safeBill.gstRate}%):</Text>
+                <Text>{safeBill.igst.toFixed(2)}</Text>
+              </View>
+            )}
             <View style={styles.totalRow}>
-              <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
                 Total:
               </Text>
-              <Text style={{ fontWeight: "bold", color: "#1976d2" }}>
+              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
                 {safeBill.total.toFixed(2)}
               </Text>
             </View>
