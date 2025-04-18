@@ -25,15 +25,15 @@ import {
   InputLabel,
   Snackbar,
   Alert,
+  IconButton,
+  Menu,
 } from "@mui/material";
-import { ArrowBack, Add, Search, Refresh } from "@mui/icons-material";
+import { ArrowBack, Add, Search, Refresh, MoreVert } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
 
 const PartyBills = () => {
   const { partyId } = useParams();
   const location = useLocation();
-
-  // Initialize filter states from localStorage or defaults
   const [bills, setBills] = useState([]);
   const [filteredBills, setFilteredBills] = useState([]);
   const [party, setParty] = useState(null);
@@ -55,8 +55,9 @@ const PartyBills = () => {
     message: "",
     severity: "success",
   });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedBillId, setSelectedBillId] = useState(null);
 
-  // Handle success messages via query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const action = params.get("action");
@@ -77,14 +78,12 @@ const PartyBills = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
-    // Clear query params
     window.history.replaceState({}, "", location.pathname);
   };
 
   useEffect(() => {
     const fetchBillsAndParty = async () => {
       try {
-        // Fetch party details
         const partyQuery = query(
           collection(db, "parties"),
           where("__name__", "==", partyId)
@@ -97,7 +96,6 @@ const PartyBills = () => {
           });
         }
 
-        // Fetch bills
         const billsQuery = query(
           collection(db, "bills"),
           where("partyId", "==", partyId)
@@ -106,14 +104,13 @@ const PartyBills = () => {
         const billsData = billsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          total: Number(doc.data().total) || 0, // Ensure total is a number
+          total: Number(doc.data().total) || 0,
         }));
-        // Sort bills by billNo
         const sortedBills = billsData.sort((a, b) =>
           String(a.billNo || "").localeCompare(String(b.billNo || ""))
         );
         setBills(sortedBills);
-        setFilteredBills(sortedBills); // Default: show all bills
+        setFilteredBills(sortedBills);
       } catch (error) {
         console.error("Error fetching data: ", error);
         setSnackbar({
@@ -129,7 +126,6 @@ const PartyBills = () => {
     fetchBillsAndParty();
   }, [partyId]);
 
-  // Save filter preferences to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(`partyBills_${partyId}_startDate`, startDate);
     localStorage.setItem(`partyBills_${partyId}_endDate`, endDate);
@@ -139,15 +135,12 @@ const PartyBills = () => {
   const applyFilters = () => {
     let filtered = [...bills];
 
-    // Apply status filter
     if (statusFilter === "Paid") {
       filtered = filtered.filter((bill) => bill.status === "paid");
     } else if (statusFilter === "Pending") {
       filtered = filtered.filter((bill) => bill.status === "pending");
     }
-    // "All" shows both paid and pending (no filtering by status)
 
-    // Apply date range filter only if both dates are selected
     if (startDate && endDate && isFilterApplied) {
       filtered = filtered.filter((bill) => {
         try {
@@ -157,13 +150,13 @@ const PartyBills = () => {
           return isWithinInterval(billDate, { start, end });
         } catch (error) {
           console.error("Date parsing error:", error);
-          return false; // Exclude bill if date parsing fails
+          return false;
         }
       });
     }
 
     setFilteredBills(filtered);
-    setPage(0); // Reset to first page after filtering
+    setPage(0);
   };
 
   const handleSearch = () => {
@@ -171,7 +164,6 @@ const PartyBills = () => {
       setIsFilterApplied(true);
       applyFilters();
     } else {
-      // If dates are not fully selected, show all bills with status filter only
       setIsFilterApplied(false);
       applyFilters();
     }
@@ -182,7 +174,7 @@ const PartyBills = () => {
     setEndDate("");
     setStatusFilter("All");
     setIsFilterApplied(false);
-    setFilteredBills(bills); // Reset to all bills
+    setFilteredBills(bills);
     setPage(0);
   };
 
@@ -199,7 +191,6 @@ const PartyBills = () => {
     setStatusFilter(event.target.value);
   };
 
-  // Auto-reset if both dates are cleared
   useEffect(() => {
     if (!startDate && !endDate) {
       setIsFilterApplied(false);
@@ -208,10 +199,19 @@ const PartyBills = () => {
     }
   }, [startDate, endDate, bills]);
 
-  // Re-apply filters when status changes
   useEffect(() => {
     applyFilters();
   }, [bills, statusFilter]);
+
+  const handleMenuOpen = (event, billId) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedBillId(billId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedBillId(null);
+  };
 
   if (loading) {
     return (
@@ -330,7 +330,6 @@ const PartyBills = () => {
           Bills for {party.companyName || party.partyName} ({party.gstNo})
         </Typography>
 
-        {/* Summary Section */}
         <Grid
           container
           spacing={{ xs: 1, sm: 2 }}
@@ -410,7 +409,6 @@ const PartyBills = () => {
           </Grid>
         </Grid>
 
-        {/* Filter and Table Section */}
         <Box
           sx={{
             display: "flex",
@@ -583,9 +581,7 @@ const PartyBills = () => {
                     fontSize: { xs: "0.75rem", sm: "0.875rem" },
                     px: { xs: 1, sm: 2 },
                   }}
-                >
-                  Actions
-                </TableCell>
+                ></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -638,19 +634,25 @@ const PartyBills = () => {
                         />
                       </TableCell>
                       <TableCell sx={{ px: { xs: 1, sm: 2 } }}>
-                        <Button
-                          component={Link}
-                          to={`/bill/${bill.id}`}
-                          variant="outlined"
-                          color="primary"
-                          size="medium"
-                          sx={{
-                            width: { xs: "100%", sm: "auto" },
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                          }}
+                        <IconButton
+                          onClick={(e) => handleMenuOpen(e, bill.id)}
+                          size="small"
                         >
-                          View
-                        </Button>
+                          <MoreVert />
+                        </IconButton>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl) && selectedBillId === bill.id}
+                          onClose={handleMenuClose}
+                        >
+                          <MenuItem
+                            component={Link}
+                            to={`/bill/${bill.id}`}
+                            onClick={handleMenuClose}
+                          >
+                            View
+                          </MenuItem>
+                        </Menu>
                       </TableCell>
                     </TableRow>
                   ))

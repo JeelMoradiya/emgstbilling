@@ -19,8 +19,17 @@ import {
   Alert,
   TextField,
   TablePagination,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
-import { Search, Wysiwyg, Payments, CurrencyRupee } from "@mui/icons-material";
+import {
+  Search,
+  Wysiwyg,
+  Payments,
+  CurrencyRupee,
+  MoreVert,
+} from "@mui/icons-material";
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);
@@ -31,6 +40,8 @@ const AllParties = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const { currentUser } = useAuth();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedPartyId, setSelectedPartyId] = useState(null);
 
   useEffect(() => {
     if (!currentUser) {
@@ -75,7 +86,6 @@ const AllParties = () => {
             (party.gstNo || "").toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        // Fetch pending bills for filtered parties
         for (let party of filtered) {
           const billsQuery = query(
             collection(db, "bills"),
@@ -90,7 +100,6 @@ const AllParties = () => {
           party.pendingBills = pendingBills;
         }
       } else {
-        // Clear pending bills if no search term
         filtered = parties.map((party) => ({
           ...party,
           pendingBills: [],
@@ -111,6 +120,16 @@ const AllParties = () => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleMenuOpen = (event, partyId) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedPartyId(partyId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedPartyId(null);
   };
 
   if (loading) {
@@ -276,9 +295,7 @@ const AllParties = () => {
                     fontWeight: "bold",
                     fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
                   }}
-                >
-                  Actions
-                </TableCell>
+                ></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -316,38 +333,35 @@ const AllParties = () => {
                         {party.email || "N/A"}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          component={Link}
-                          to={`/party-bills/${party.id}`}
-                          variant="outlined"
-                          color="primary"
-                          size="large"
-                          sx={{
-                            minWidth: { xs: "50px", sm: "50px" },
-                            height: { xs: "50px", sm: "50px" },
-                            fontSize: { xs: "1rem", sm: "1rem" },
-                            textTransform: "none",
-                            marginRight: "10px",
-                          }}
+                        <IconButton
+                          onClick={(e) => handleMenuOpen(e, party.id)}
+                          size="small"
                         >
-                          <Wysiwyg />
-                        </Button>
-                        <Button
-                          component={Link}
-                          to={`/payment/${party.id}`}
-                          variant="outlined"
-                          color="primary"
-                          size="large"
-                          sx={{
-                            minWidth: { xs: "50px", sm: "50px" },
-                            height: { xs: "50px", sm: "50px" },
-                            fontSize: { xs: "1rem", sm: "1rem" },
-                            textTransform: "none",
-                          }}
+                          <MoreVert />
+                        </IconButton>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={
+                            Boolean(anchorEl) && selectedPartyId === party.id
+                          }
+                          onClose={handleMenuClose}
                         >
-                          <CurrencyRupee />
-                          <Payments />
-                        </Button>
+                          <MenuItem
+                            component={Link}
+                            to={`/party-bills/${party.id}`}
+                            onClick={handleMenuClose}
+                          >
+                            {" "}
+                            View Bills
+                          </MenuItem>
+                          <MenuItem
+                            component={Link}
+                            to={`/payment/${party.id}`}
+                            onClick={handleMenuClose}
+                          >
+                            Payment
+                          </MenuItem>
+                        </Menu>
                       </TableCell>
                     </TableRow>
                   ))
