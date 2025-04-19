@@ -129,7 +129,7 @@ const Navbar = () => {
                     variant="h6"
                     sx={{ fontWeight: 700, flexGrow: 1 }}
                   >
-                    Hisab Satu
+                    Hisab Setu
                   </Typography>
                   <IconButton
                     color="inherit"
@@ -338,7 +338,7 @@ const Navbar = () => {
                   mr: 2,
                 }}
               >
-                Hisab Satu
+                Hisab Setu
               </Typography>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

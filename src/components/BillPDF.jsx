@@ -209,6 +209,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
           <View style={styles.headerLeft}>
             <Text style={styles.title}>{safeUser.companyName}</Text>
             <Text style={styles.subtitle}>GSTIN: {safeUser.gstNo}</Text>
+            <Text style={styles.subtitle}>UDYAM Number</Text>
             <Text style={styles.subtitle}>
               Address: {formatAddress(safeUser.address)}
             </Text>

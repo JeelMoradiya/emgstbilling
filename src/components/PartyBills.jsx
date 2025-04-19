@@ -38,17 +38,11 @@ const PartyBills = () => {
   const [filteredBills, setFilteredBills] = useState([]);
   const [party, setParty] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(
-    localStorage.getItem(`partyBills_${partyId}_startDate`) || ""
-  );
-  const [endDate, setEndDate] = useState(
-    localStorage.getItem(`partyBills_${partyId}_endDate`) || ""
-  );
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [statusFilter, setStatusFilter] = useState(
-    localStorage.getItem(`partyBills_${partyId}_statusFilter`) || "All"
-  );
+  const [statusFilter, setStatusFilter] = useState("All");
   const [isFilterApplied, setIsFilterApplied] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,

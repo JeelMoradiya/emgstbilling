@@ -40,9 +40,10 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Collapse,
   useMediaQuery,
   useTheme,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Search,
@@ -52,10 +53,7 @@ import {
   Delete,
   MoreVert,
   Close,
-  KeyboardArrowDown,
-  KeyboardArrowUp,
 } from "@mui/icons-material";
-import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 
 const Payment = () => {
@@ -79,16 +77,18 @@ const Payment = () => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [billToDelete, setBillToDelete] = useState(null);
-  const [expandedRow, setExpandedRow] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedBillId, setSelectedBillId] = useState(null);
   const [summary, setSummary] = useState({
     total: 0,
-    paid: 0,
-    pending: 0,
     totalTDS: 0,
     totalOtherClaim: 0,
     totalBrokerage: 0,
+  });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
   });
 
   const validationSchema = Yup.object({
@@ -97,7 +97,10 @@ const Payment = () => {
       is: "cheque",
       then: () =>
         Yup.string()
-          .matches(/^[A-Za-z0-9]{6,12}$/, "Invalid cheque number (6-12 characters)")
+          .matches(
+            /^[A-Za-z0-9]{6,12}$/,
+            "Invalid cheque number (6-12 characters)"
+          )
           .required("Cheque number is required"),
       otherwise: () => Yup.string().notRequired(),
     }),
@@ -113,10 +116,7 @@ const Payment = () => {
       is: "upi",
       then: () =>
         Yup.string()
-          .matches(
-            /^[a-zA-Z0-9.-_]{2,256}@[a-zA-Z]{2,64}$/,
-            "Invalid UPI ID"
-          )
+          .matches(/^[a-zA-Z0-9.-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID")
           .required("UPI ID is required"),
       otherwise: () => Yup.string().notRequired(),
     }),
@@ -137,11 +137,21 @@ const Payment = () => {
       .typeError("Amount must be a number")
       .positive("Amount must be positive")
       .required("Amount is required"),
+    taxableAmount: Yup.number()
+      .typeError("Taxable Amount must be a number")
+      .positive("Taxable Amount must be positive")
+      .required("Taxable Amount is required"),
     tds: Yup.number()
       .typeError("TDS must be a number")
-      .min(0, "TDS cannot be negative")
-      .max(100, "TDS cannot exceed 100%")
-      .required("TDS percentage is required"),
+      .when("paymentMethod", {
+        is: (val) => val !== "cash",
+        then: () =>
+          Yup.number()
+            .min(0, "TDS cannot be negative")
+            .max(100, "TDS cannot exceed 100%")
+            .required("TDS percentage is required"),
+        otherwise: () => Yup.number().notRequired(),
+      }),
     otherClaimPercentage: Yup.number()
       .typeError("Other claim percentage must be a number")
       .min(0, "Other claim percentage cannot be negative")
@@ -173,6 +183,7 @@ const Payment = () => {
       upiName: "",
       rtgsNeft: "",
       amount: "",
+      taxableAmount: "",
       tds: "",
       otherClaim: "",
       otherClaimPercentage: "",
@@ -184,17 +195,22 @@ const Payment = () => {
     onSubmit: async (values) => {
       try {
         const billRef = doc(db, "bills", selectedBill.id);
-        const tdsAmount = (Number(values.amount) * Number(values.tds)) / 100;
+        const tdsAmount =
+          values.paymentMethod === "cash"
+            ? 0
+            : (Number(values.taxableAmount) * Number(values.tds)) / 100;
         const otherClaimAmount = Number(values.otherClaim) || 0;
         const brokerageAmount =
-          (Number(values.amount) * Number(values.brokeragePercentage)) / 100 || 0;
+          (Number(values.taxableAmount) * Number(values.brokeragePercentage)) /
+            100 || 0;
 
         const paymentData = {
           method: values.paymentMethod,
           status: "paid",
           date: new Date().toISOString(),
           amount: Number(values.amount),
-          tds: Number(values.tds),
+          taxableAmount: Number(values.taxableAmount),
+          tds: values.paymentMethod === "cash" ? 0 : Number(values.tds),
           tdsAmount,
           otherClaim: otherClaimAmount,
           otherClaimPercentage: Number(values.otherClaimPercentage) || 0,
@@ -217,7 +233,10 @@ const Payment = () => {
           }),
         };
 
-        await updateDoc(billRef, { paymentDetails: paymentData, status: "paid" });
+        await updateDoc(billRef, {
+          paymentDetails: paymentData,
+          status: "paid",
+        });
 
         setBills((prev) =>
           prev.map((bill) =>
@@ -236,14 +255,10 @@ const Payment = () => {
 
         setSummary((prev) => ({
           ...prev,
-          paid:
+          total:
             dialogMode === "edit"
-              ? prev.paid
-              : prev.paid + Number(values.amount),
-          pending:
-            dialogMode === "edit"
-              ? prev.pending
-              : prev.pending - Number(values.amount),
+              ? prev.total
+              : prev.total + Number(values.amount),
           totalTDS:
             dialogMode === "edit"
               ? prev.totalTDS +
@@ -264,18 +279,25 @@ const Payment = () => {
               : prev.totalBrokerage + brokerageAmount,
         }));
 
-        toast.success(
-          dialogMode === "edit"
-            ? "Payment updated successfully"
-            : "Payment recorded successfully"
-        );
+        setSnackbar({
+          open: true,
+          message:
+            dialogMode === "edit"
+              ? "Payment updated successfully"
+              : "Payment recorded successfully",
+          severity: "success",
+        });
         setOpenDialog(false);
         formik.resetForm();
         setDialogMode("add");
         setSelectedBill(null);
       } catch (error) {
         console.error("Error recording payment: ", error);
-        toast.error("Failed to record payment: " + error.message);
+        setSnackbar({
+          open: true,
+          message: "Failed to record payment: " + error.message,
+          severity: "error",
+        });
       }
     },
   });
@@ -318,7 +340,8 @@ const Payment = () => {
           id: doc.id,
           billNo: doc.data().billNo || "N/A",
           date: doc.data().date || new Date().toISOString(),
-          totalAmount: Number(doc.data().total) || 0, // Fetch total from ViewBill.jsx
+          totalAmount: Number(doc.data().total) || 0,
+          taxableAmount: Number(doc.data().taxableAmount) || 0,
           status: doc.data().status || "pending",
           paymentDetails: doc.data().paymentDetails || null,
         }));
@@ -336,9 +359,6 @@ const Payment = () => {
           (sum, bill) => sum + (Number(bill.totalAmount) || 0),
           0
         );
-        const paid = sortedBills
-          .filter((bill) => bill.status === "paid")
-          .reduce((sum, bill) => sum + (Number(bill.totalAmount) || 0), 0);
         const totalTDS = sortedBills.reduce(
           (sum, bill) => sum + (Number(bill.paymentDetails?.tdsAmount) || 0),
           0
@@ -354,8 +374,6 @@ const Payment = () => {
 
         setSummary({
           total,
-          paid,
-          pending: total - paid,
           totalTDS,
           totalOtherClaim,
           totalBrokerage,
@@ -373,7 +391,11 @@ const Payment = () => {
 
   const handleSearch = () => {
     if (!searchStartDate || !searchEndDate) {
-      toast.error("Please select both start and end dates");
+      setSnackbar({
+        open: true,
+        message: "Please select both start and end dates",
+        severity: "error",
+      });
       return;
     }
 
@@ -392,7 +414,11 @@ const Payment = () => {
       setSearchStartDate("");
       setSearchEndDate("");
     } catch (error) {
-      toast.error("Invalid date format");
+      setSnackbar({
+        open: true,
+        message: "Invalid date format",
+        severity: "error",
+      });
     }
   };
 
@@ -409,29 +435,34 @@ const Payment = () => {
     setSelectedBill(bill);
     setDialogMode(mode);
     setOpenDialog(true);
-    if (mode === "edit" && bill.paymentDetails) {
+    if (mode === "edit" || mode === "view") {
       formik.setValues({
-        paymentMethod: bill.paymentDetails.method || "",
-        chequeNo: bill.paymentDetails.chequeNo || "",
-        bank: bill.paymentDetails.bank || "",
-        upiId: bill.paymentDetails.upiId || "",
-        upiName: bill.paymentDetails.upiName || "",
-        rtgsNeft: bill.paymentDetails.rtgsNeft || "",
+        paymentMethod: bill.paymentDetails?.method || "",
+        chequeNo: bill.paymentDetails?.chequeNo || "",
+        bank: bill.paymentDetails?.bank || "",
+        upiId: bill.paymentDetails?.upiId || "",
+        upiName: bill.paymentDetails?.upiName || "",
+        rtgsNeft: bill.paymentDetails?.rtgsNeft || "",
         amount: Number(bill.totalAmount).toFixed(2),
-        tds: Number(bill.paymentDetails.tds || 0).toString(),
-        otherClaim: Number(bill.paymentDetails.otherClaim || 0).toString(),
+        taxableAmount: Number(bill.taxableAmount).toFixed(2),
+        tds: Number(bill.paymentDetails?.tds || 0).toString(),
+        otherClaim: Number(bill.paymentDetails?.otherClaim || 0).toString(),
         otherClaimPercentage: Number(
-          bill.paymentDetails.otherClaimPercentage || 0
+          bill.paymentDetails?.otherClaimPercentage || 0
         ).toString(),
-        brokerName: bill.paymentDetails.brokerName || "",
-        brokerPhone: bill.paymentDetails.brokerPhone || "",
+        brokerName: bill.paymentDetails?.brokerName || "",
+        brokerPhone: bill.paymentDetails?.brokerPhone || "",
         brokeragePercentage: Number(
-          bill.paymentDetails.brokeragePercentage || 0
+          bill.paymentDetails?.brokeragePercentage || 0
         ).toString(),
       });
     } else {
       formik.resetForm();
       formik.setFieldValue("amount", Number(bill.totalAmount).toFixed(2));
+      formik.setFieldValue(
+        "taxableAmount",
+        Number(bill.taxableAmount).toFixed(2)
+      );
     }
   };
 
@@ -478,19 +509,26 @@ const Payment = () => {
 
       setSummary((prev) => ({
         ...prev,
-        paid: prev.paid - amount,
-        pending: prev.pending + amount,
+        total: prev.total - amount,
         totalTDS: prev.totalTDS - tdsAmount,
         totalOtherClaim: prev.totalOtherClaim - otherClaim,
         totalBrokerage: prev.totalBrokerage - brokerageAmount,
       }));
 
-      toast.success("Payment deleted successfully");
+      setSnackbar({
+        open: true,
+        message: "Payment deleted successfully",
+        severity: "success",
+      });
       setOpenDeleteDialog(false);
       setBillToDelete(null);
     } catch (error) {
       console.error("Error deleting payment: ", error);
-      toast.error("Failed to delete payment: " + error.message);
+      setSnackbar({
+        open: true,
+        message: "Failed to delete payment: " + error.message,
+        severity: "error",
+      });
     }
   };
 
@@ -504,8 +542,8 @@ const Payment = () => {
     setSelectedBillId(null);
   };
 
-  const handleToggleRow = (billId) => {
-    setExpandedRow(expandedRow === billId ? null : billId);
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   if (loading) {
@@ -539,19 +577,6 @@ const Payment = () => {
           >
             {error || "Party not found"}
           </Typography>
-          <Button
-            onClick={() => navigate("/parties")}
-            startIcon={<ArrowBack />}
-            variant="outlined"
-            size="medium"
-            sx={{
-              mt: 2,
-              width: { xs: "100%", sm: "auto" },
-              fontSize: { xs: "0.75rem", sm: "0.875rem" },
-            }}
-          >
-            Back to All Parties
-          </Button>
         </Paper>
       </Container>
     );
@@ -583,17 +608,6 @@ const Payment = () => {
           >
             Payments for {party.companyName || party.partyName} ({party.gstNo})
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBack />}
-            onClick={() => navigate("/parties")}
-            sx={{
-              width: { xs: "100%", sm: "auto" },
-              fontSize: { xs: "0.75rem", sm: "0.875rem" },
-            }}
-          >
-            Back to All Parties
-          </Button>
         </Box>
 
         <Grid
@@ -612,16 +626,32 @@ const Payment = () => {
             >
               <Typography
                 variant="body2"
-                color="text.secondary"
+                color="text.primary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                Total
+                <strong>Total TDS & Other Claim</strong>
               </Typography>
               <Typography
                 variant="h6"
                 sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
               >
-                ₹{summary.total.toFixed(2)}
+                <strong>
+                  ₹{(summary.totalTDS + summary.totalOtherClaim).toFixed(2)}
+                </strong>
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.primary"
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
+              >
+                <strong>
+                  {(
+                    ((summary.totalTDS + summary.totalOtherClaim) /
+                      summary.total) *
+                      100 || 0
+                  ).toFixed(2)}
+                  %
+                </strong>
               </Typography>
             </Box>
           </Grid>
@@ -639,13 +669,22 @@ const Payment = () => {
                 color="text.secondary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                Paid
+                <strong>Total TDS</strong>
               </Typography>
               <Typography
                 variant="h6"
                 sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
               >
-                ₹{summary.paid.toFixed(2)}
+                <strong>₹{summary.totalTDS.toFixed(2)}</strong>
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
+              >
+                <strong>
+                  {((summary.totalTDS / summary.total) * 100 || 0).toFixed(2)}%
+                </strong>
               </Typography>
             </Box>
           </Grid>
@@ -663,13 +702,25 @@ const Payment = () => {
                 color="text.secondary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                Pending
+                <strong>Total Other Claim</strong>
               </Typography>
               <Typography
                 variant="h6"
                 sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
               >
-                ₹{summary.pending.toFixed(2)}
+                <strong>₹{summary.totalOtherClaim.toFixed(2)}</strong>
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
+              >
+                <strong>
+                  {(
+                    (summary.totalOtherClaim / summary.total) * 100 || 0
+                  ).toFixed(2)}
+                  %
+                </strong>
               </Typography>
             </Box>
           </Grid>
@@ -678,7 +729,7 @@ const Payment = () => {
               sx={{
                 p: { xs: 1.5, sm: 2 },
                 borderRadius: 2,
-                bgcolor: "#f0f4f8",
+                bgcolor: "#e8f5e9",
                 textAlign: "center",
               }}
             >
@@ -687,51 +738,22 @@ const Payment = () => {
                 color="text.secondary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                Total TDS
+                <strong>Total Brokerage Amount</strong>
               </Typography>
               <Typography
                 variant="h6"
                 sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
               >
-                ₹{summary.totalTDS.toFixed(2)}
+                <strong>₹{summary.totalBrokerage.toFixed(2)}</strong>
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
               >
-                ({((summary.totalTDS / summary.total) * 100 || 0).toFixed(2)}%)
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <Box
-              sx={{
-                p: { xs: 1.5, sm: 2 },
-                borderRadius: 2,
-                bgcolor: "#f0f4f8",
-                textAlign: "center",
-              }}
-            >
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-              >
-                Total Other Claim
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
-              >
-                ₹{summary.totalOtherClaim.toFixed(2)}
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
-              >
-                ({((summary.totalOtherClaim / summary.total) * 100 || 0).toFixed(2)}%)
+                <strong>
+                  {((summary.totalBrokerage / summary.total) * 100 || 0).toFixed(2)}%
+                </strong>
               </Typography>
             </Box>
           </Grid>
@@ -804,12 +826,6 @@ const Payment = () => {
                     fontWeight: "bold",
                     fontSize: { xs: "0.75rem", sm: "0.875rem" },
                   }}
-                ></TableCell>
-                <TableCell
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                  }}
                 >
                   Bill No
                 </TableCell>
@@ -868,7 +884,6 @@ const Payment = () => {
                 <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell></TableCell>
-                <TableCell></TableCell>
                 <TableCell
                   sx={{
                     fontWeight: "bold",
@@ -914,308 +929,144 @@ const Payment = () => {
                 filteredBills
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((bill) => (
-                    <React.Fragment key={bill.id}>
-                      <TableRow hover>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleToggleRow(bill.id)}
-                          >
-                            {expandedRow === bill.id ? (
-                              <KeyboardArrowUp />
-                            ) : (
-                              <KeyboardArrowDown />
-                            )}
-                          </IconButton>
-                        </TableCell>
-                        <TableCell
+                    <TableRow key={bill.id} hover>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        }}
+                      >
+                        {bill.billNo}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        }}
+                      >
+                        {bill.date
+                          ? format(parseISO(bill.date), "dd-MM-yyyy")
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        }}
+                      >
+                        ₹{(Number(bill.totalAmount) || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                          textAlign: "center",
+                        }}
+                      >
+                        {(Number(bill.paymentDetails?.tds) || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                          textAlign: "center",
+                        }}
+                      >
+                        ₹{(Number(bill.paymentDetails?.tdsAmount) || 0).toFixed(
+                          2
+                        )}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                          textAlign: "center",
+                        }}
+                      >
+                        {(
+                          Number(bill.paymentDetails?.otherClaimPercentage) || 0
+                        ).toFixed(2)}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                          textAlign: "center",
+                        }}
+                      >
+                        ₹{(Number(bill.paymentDetails?.otherClaim) || 0).toFixed(
+                          2
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={bill.status.toUpperCase()}
+                          color={bill.status === "paid" ? "success" : "warning"}
+                          size="small"
+                          variant="outlined"
                           sx={{
                             fontSize: { xs: "0.75rem", sm: "0.875rem" },
                           }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          onClick={(e) => handleMenuOpen(e, bill.id)}
+                          size={isMobile ? "small" : "medium"}
                         >
-                          {bill.billNo}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                          }}
+                          <MoreVert />
+                        </IconButton>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl) && selectedBillId === bill.id}
+                          onClose={handleMenuClose}
                         >
-                          {bill.date
-                            ? format(parseISO(bill.date), "dd-MM-yyyy")
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                          }}
-                        >
-                          ₹{(Number(bill.totalAmount) || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                            textAlign: "center",
-                          }}
-                        >
-                          {(Number(bill.paymentDetails?.tds) || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                            textAlign: "center",
-                          }}
-                        >
-                          ₹{(Number(bill.paymentDetails?.tdsAmount) || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                            textAlign: "center",
-                          }}
-                        >
-                          {(Number(bill.paymentDetails?.otherClaimPercentage) || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                            textAlign: "center",
-                          }}
-                        >
-                          ₹{(Number(bill.paymentDetails?.otherClaim) || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={bill.status.toUpperCase()}
-                            color={bill.status === "paid" ? "success" : "warning"}
-                            size="small"
-                            variant="outlined"
-                            sx={{
-                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <IconButton
-                            onClick={(e) => handleMenuOpen(e, bill.id)}
-                            size={isMobile ? "small" : "medium"}
-                          >
-                            <MoreVert />
-                          </IconButton>
-                          <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl) && selectedBillId === bill.id}
-                            onClose={handleMenuClose}
-                          >
-                            {bill.status !== "paid" ? (
-                              <MenuItem
-                                onClick={() => {
-                                  handleOpenDialog(bill, "add");
-                                  handleMenuClose();
-                                }}
-                                sx={{
-                                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                                }}
-                              >
-                                Pay
-                              </MenuItem>
-                            ) : (
-                              <>
-                                <MenuItem
-                                  onClick={() => {
-                                    handleOpenDialog(bill, "view");
-                                    handleMenuClose();
-                                  }}
-                                  sx={{
-                                    fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                                  }}
-                                >
-                                  View
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() => {
-                                    handleOpenDialog(bill, "edit");
-                                    handleMenuClose();
-                                  }}
-                                  sx={{
-                                    fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                                  }}
-                                >
-                                  Edit
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() => {
-                                    handleDelete(bill.id);
-                                    handleMenuClose();
-                                  }}
-                                  sx={{
-                                    fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                                  }}
-                                >
-                                  Delete
-                                </MenuItem>
-                              </>
-                            )}
-                          </Menu>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell
-                          style={{ paddingBottom: 0, paddingTop: 0 }}
-                          colSpan={10}
-                        >
-                          <Collapse
-                            in={expandedRow === bill.id}
-                            timeout="auto"
-                            unmountOnExit
-                          >
-                            <Box
+                          {bill.status !== "paid" ? (
+                            <MenuItem
+                              onClick={() => {
+                                handleOpenDialog(bill, "add");
+                                handleMenuClose();
+                              }}
                               sx={{
-                                p: { xs: 1, sm: 2 },
-                                bgcolor: "#fafafa",
-                                borderRadius: 1,
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
                               }}
                             >
-                              <Grid
-                                container
-                                spacing={2}
-                                direction={isMobile ? "column" : "row"}
-                              >
-                                <Grid item xs={12} sm={4}>
-                                  <Typography
-                                    variant="subtitle1"
-                                    sx={{
-                                      fontWeight: "bold",
-                                      color: "#2c3e50",
-                                      mb: 1,
-                                      fontSize: {
-                                        xs: "0.85rem",
-                                        sm: "1rem",
-                                      },
-                                    }}
-                                  >
-                                    Payment Details
-                                  </Typography>
-                                  {bill.paymentDetails ? (
-                                    <>
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          fontSize: {
-                                            xs: "0.75rem",
-                                            sm: "0.875rem",
-                                          },
-                                        }}
-                                      >
-                                        Method:{" "}
-                                        {bill.paymentDetails.method
-                                          .charAt(0)
-                                          .toUpperCase() +
-                                          bill.paymentDetails.method.slice(1)}
-                                      </Typography>
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          fontSize: {
-                                            xs: "0.75rem",
-                                            sm: "0.875rem",
-                                          },
-                                        }}
-                                      >
-                                        Date:{" "}
-                                        {format(
-                                          parseISO(bill.paymentDetails.date),
-                                          "dd-MM-yyyy HH:mm:ss"
-                                        )}
-                                      </Typography>
-                                    </>
-                                  ) : (
-                                    <Typography
-                                      variant="body2"
-                                      sx={{
-                                        fontSize: {
-                                          xs: "0.75rem",
-                                          sm: "0.875rem",
-                                        },
-                                      }}
-                                    >
-                                      No payment details available
-                                    </Typography>
-                                  )}
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                  <Typography
-                                    variant="subtitle1"
-                                    sx={{
-                                      fontWeight: "bold",
-                                      color: "#2c3e50",
-                                      mb: 1,
-                                      fontSize: {
-                                        xs: "0.85rem",
-                                        sm: "1rem",
-                                      },
-                                    }}
-                                  >
-                                    Broker Details
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: {
-                                        xs: "0.75rem",
-                                        sm: "0.875rem",
-                                      },
-                                    }}
-                                  >
-                                    Name:{" "}
-                                    {bill.paymentDetails?.brokerName || "N/A"}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: {
-                                        xs: "0.75rem",
-                                        sm: "0.875rem",
-                                      },
-                                    }}
-                                  >
-                                    Phone:{" "}
-                                    {bill.paymentDetails?.brokerPhone || "N/A"}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: {
-                                        xs: "0.75rem",
-                                        sm: "0.875rem",
-                                      },
-                                    }}
-                                  >
-                                    Brokerage (%):{" "}
-                                    {(Number(
-                                      bill.paymentDetails?.brokeragePercentage
-                                    ) || 0).toFixed(2)}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: {
-                                        xs: "0.75rem",
-                                        sm: "0.875rem",
-                                      },
-                                    }}
-                                  >
-                                    Brokerage Amount: ₹
-                                    {(Number(
-                                      bill.paymentDetails?.brokerageAmount
-                                    ) || 0).toFixed(2)}
-                                  </Typography>
-                                </Grid>
-                              </Grid>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </React.Fragment>
+                              Pay
+                            </MenuItem>
+                          ) : [
+                            <MenuItem
+                              key="view"
+                              onClick={() => {
+                                handleOpenDialog(bill, "view");
+                                handleMenuClose();
+                              }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
+                            >
+                              View
+                            </MenuItem>,
+                            <MenuItem
+                              key="edit"
+                              onClick={() => {
+                                handleOpenDialog(bill, "edit");
+                                handleMenuClose();
+                              }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
+                            >
+                              Edit
+                            </MenuItem>,
+                            <MenuItem
+                              key="delete"
+                              onClick={() => {
+                                handleDelete(bill.id);
+                                handleMenuClose();
+                              }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
+                            >
+                              Delete
+                            </MenuItem>,
+                          ]}
+                        </Menu>
+                      </TableCell>
+                    </TableRow>
                   ))
               ) : (
                 <TableRow>
@@ -1280,7 +1131,7 @@ const Payment = () => {
                 }}
               >
                 {dialogMode === "view"
-                  ? "View Payment"
+                  ? "View Payment Details"
                   : dialogMode === "edit"
                   ? "Edit Payment"
                   : "Record Payment"}
@@ -1309,340 +1160,43 @@ const Payment = () => {
             </Box>
           </DialogTitle>
           <DialogContent sx={{ mt: 2, px: { xs: 2, sm: 3 } }}>
-            {dialogMode === "view" ? (
-              <>
-                <Box sx={{ mb: 3 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    Payment Information
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Payment Method
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.paymentMethod
-                          ? formik.values.paymentMethod.charAt(0).toUpperCase() +
-                            formik.values.paymentMethod.slice(1)
-                          : "N/A"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Amount
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        ₹{(Number(formik.values.amount) || 0).toFixed(2)}
-                      </Typography>
-                    </Grid>
-                    {formik.values.paymentMethod === "cheque" && (
+            <>
+              <Box sx={{ mb: 3 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    color: "#2c3e50",
+                    mb: 2,
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                  }}
+                >
+                  Payment Information
+                </Typography>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
                       <>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            Cheque Number
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.chequeNo || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            Bank Name
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.bank || "N/A"}
-                          </Typography>
-                        </Grid>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Payment Method
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          {formik.values.paymentMethod
+                            ? formik.values.paymentMethod
+                                .charAt(0)
+                                .toUpperCase() +
+                              formik.values.paymentMethod.slice(1)
+                            : "N/A"}
+                        </Typography>
                       </>
-                    )}
-                    {formik.values.paymentMethod === "upi" && (
-                      <>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            UPI ID
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.upiId || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            UPI Name
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.upiName || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            Bank Name
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.bank || "N/A"}
-                          </Typography>
-                        </Grid>
-                      </>
-                    )}
-                    {formik.values.paymentMethod === "netbanking" && (
-                      <>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            RTGS/NEFT
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.rtgsNeft || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography
-                            variant="subtitle2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                          >
-                            Bank Name
-                          </Typography>
-                          <Typography
-                            variant="body1"
-                            sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                          >
-                            {formik.values.bank || "N/A"}
-                          </Typography>
-                        </Grid>
-                      </>
-                    )}
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        TDS (%)
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {(Number(formik.values.tds) || 0).toFixed(2)}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        TDS Amount
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        ₹
-                        {(
-                          (Number(formik.values.amount) *
-                            Number(formik.values.tds)) /
-                          100
-                        ).toFixed(2)}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Other Claim (%)
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {(Number(formik.values.otherClaimPercentage) || 0).toFixed(
-                          2
-                        )}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Other Claim Amount
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        ₹{(Number(formik.values.otherClaim) || 0).toFixed(2)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
-                <Divider sx={{ my: 2 }} />
-                <Box>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    Broker Details
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Broker Name
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.brokerName || "N/A"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Broker Phone
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {formik.values.brokerPhone || "N/A"}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Brokerage (%)
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        {(Number(formik.values.brokeragePercentage) || 0).toFixed(
-                          2
-                        )}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                      >
-                        Brokerage Amount
-                      </Typography>
-                      <Typography
-                        variant="body1"
-                        sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
-                      >
-                        ₹
-                        {(
-                          (Number(formik.values.amount) *
-                            Number(formik.values.brokeragePercentage)) /
-                          100
-                        ).toFixed(2)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
-              </>
-            ) : (
-              <>
-                <Box sx={{ mb: 3 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    Payment Information
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={6}>
+                    ) : (
                       <FormControl
                         fullWidth
                         error={
@@ -1710,8 +1264,26 @@ const Payment = () => {
                             </Typography>
                           )}
                       </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Amount
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          ₹{(Number(formik.values.amount) || 0).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="amount"
@@ -1723,7 +1295,9 @@ const Payment = () => {
                         error={
                           formik.touched.amount && Boolean(formik.errors.amount)
                         }
-                        helperText={formik.touched.amount && formik.errors.amount}
+                        helperText={
+                          formik.touched.amount && formik.errors.amount
+                        }
                         disabled
                         sx={{
                           "& .MuiInputBase-root": {
@@ -1731,10 +1305,30 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
-                    {formik.values.paymentMethod === "cheque" && (
-                      <>
-                        <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  {formik.values.paymentMethod === "cheque" && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              Cheque Number
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.chequeNo || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="chequeNo"
@@ -1756,8 +1350,28 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              Bank Name
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.bank || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="bank"
@@ -1778,12 +1392,32 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                      </>
-                    )}
-                    {formik.values.paymentMethod === "upi" && (
-                      <>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                    </>
+                  )}
+                  {formik.values.paymentMethod === "upi" && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              UPI ID
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.upiId || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="upiId"
@@ -1805,8 +1439,28 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              UPI Name
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.upiName || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="upiName"
@@ -1828,8 +1482,28 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              Bank Name
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.bank || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="bank"
@@ -1850,12 +1524,32 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                      </>
-                    )}
-                    {formik.values.paymentMethod === "netbanking" && (
-                      <>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                    </>
+                  )}
+                  {formik.values.paymentMethod === "netbanking" && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              RTGS/NEFT
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.rtgsNeft || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <FormControl
                             fullWidth
                             error={
@@ -1910,8 +1604,28 @@ const Payment = () => {
                                 </Typography>
                               )}
                           </FormControl>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
+                        )}
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              Bank Name
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {formik.values.bank || "N/A"}
+                            </Typography>
+                          </>
+                        ) : (
                           <TextField
                             fullWidth
                             id="bank"
@@ -1932,57 +1646,126 @@ const Payment = () => {
                               },
                             }}
                           />
-                        </Grid>
-                      </>
-                    )}
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        id="tds"
-                        name="tds"
-                        label="TDS (%)"
-                        value={formik.values.tds}
-                        onChange={(e) => {
-                          formik.handleChange(e);
-                          formik.setFieldValue(
-                            "tdsAmount",
-                            (
-                              (Number(formik.values.amount) *
-                                Number(e.target.value)) /
+                        )}
+                      </Grid>
+                    </>
+                  )}
+                  {formik.values.paymentMethod !== "cash" && (
+                    <>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              TDS (%)
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              {(Number(formik.values.tds) || 0).toFixed(2)}
+                            </Typography>
+                          </>
+                        ) : (
+                          <TextField
+                            fullWidth
+                            id="tds"
+                            name="tds"
+                            label="TDS (%)"
+                            value={formik.values.tds}
+                            onChange={(e) => {
+                              formik.handleChange(e);
+                              formik.setFieldValue(
+                                "tdsAmount",
+                                (
+                                  (Number(formik.values.taxableAmount) *
+                                    Number(e.target.value)) /
+                                  100
+                                ).toFixed(2)
+                              );
+                            }}
+                            onBlur={formik.handleBlur}
+                            error={
+                              formik.touched.tds && Boolean(formik.errors.tds)
+                            }
+                            helperText={formik.touched.tds && formik.errors.tds}
+                            sx={{
+                              "& .MuiInputBase-root": {
+                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                              },
+                            }}
+                          />
+                        )}
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        {dialogMode === "view" ? (
+                          <>
+                            <Typography
+                              variant="subtitle2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              TDS Amount
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                            >
+                              ₹
+                              {(
+                                (Number(formik.values.taxableAmount) *
+                                  Number(formik.values.tds)) /
+                                100
+                              ).toFixed(2)}
+                            </Typography>
+                          </>
+                        ) : (
+                          <TextField
+                            fullWidth
+                            id="tdsAmount"
+                            name="tdsAmount"
+                            label="TDS Amount"
+                            value={(
+                              (Number(formik.values.taxableAmount) *
+                                Number(formik.values.tds)) /
                               100
-                            ).toFixed(2)
-                          );
-                        }}
-                        onBlur={formik.handleBlur}
-                        error={formik.touched.tds && Boolean(formik.errors.tds)}
-                        helperText={formik.touched.tds && formik.errors.tds}
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        id="tdsAmount"
-                        name="tdsAmount"
-                        label="TDS Amount"
-                        value={(
-                          (Number(formik.values.amount) *
-                            Number(formik.values.tds)) /
-                          100
-                        ).toFixed(2)}
-                        disabled
-                        sx={{
-                          "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          },
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                            ).toFixed(2)}
+                            disabled
+                            sx={{
+                              "& .MuiInputBase-root": {
+                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                              },
+                            }}
+                          />
+                        )}
+                      </Grid>
+                    </>
+                  )}
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Other Claim (%)
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          {(Number(formik.values.otherClaimPercentage) || 0).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="otherClaimPercentage"
@@ -1994,7 +1777,7 @@ const Payment = () => {
                           formik.setFieldValue(
                             "otherClaim",
                             (
-                              (Number(formik.values.amount) *
+                              (Number(formik.values.taxableAmount) *
                                 Number(e.target.value)) /
                               100
                             ).toFixed(2)
@@ -2015,8 +1798,26 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Other Claim Amount
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          ₹{(Number(formik.values.otherClaim) || 0).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="otherClaim"
@@ -2029,7 +1830,7 @@ const Payment = () => {
                             "otherClaimPercentage",
                             (
                               (Number(e.target.value) /
-                                Number(formik.values.amount)) *
+                                Number(formik.values.taxableAmount)) *
                               100
                             ).toFixed(2)
                           );
@@ -2048,24 +1849,42 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
+                    )}
                   </Grid>
-                </Box>
-                <Divider sx={{ my: 2 }} />
-                <Box>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      mb: 2,
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
-                    }}
-                  >
-                    Broker Details (Optional)
-                  </Typography>
-                  <Grid container spacing={{ xs: 2, sm: 3 }}>
-                    <Grid item xs={12} md={6}>
+                </Grid>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <Box>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "bold",
+                    color: "#2c3e50",
+                    mb: 2,
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                  }}
+                >
+                  Broker Details
+                </Typography>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Broker Name
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          {formik.values.brokerName || "N/A"}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="brokerName"
@@ -2087,8 +1906,26 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Broker Phone
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          {formik.values.brokerPhone || "N/A"}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="brokerPhone"
@@ -2102,7 +1939,8 @@ const Payment = () => {
                           Boolean(formik.errors.brokerPhone)
                         }
                         helperText={
-                          formik.touched.brokerPhone && formik.errors.brokerPhone
+                          formik.touched.brokerPhone &&
+                          formik.errors.brokerPhone
                         }
                         sx={{
                           "& .MuiInputBase-root": {
@@ -2110,8 +1948,68 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  <Grid item xs={12}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Taxable Amount
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          ₹{(Number(formik.values.taxableAmount) || 0).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
+                      <TextField
+                        fullWidth
+                        id="taxableAmount"
+                        name="taxableAmount"
+                        label="Taxable Amount"
+                        value={formik.values.taxableAmount}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        error={
+                          formik.touched.taxableAmount &&
+                          Boolean(formik.errors.taxableAmount)
+                        }
+                        helperText={
+                          formik.touched.taxableAmount &&
+                          formik.errors.taxableAmount
+                        }
+                        disabled
+                        sx={{
+                          "& .MuiInputBase-root": {
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          },
+                        }}
+                      />
+                    )}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Brokerage (%)
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          {(Number(formik.values.brokeragePercentage) || 0).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="brokeragePercentage"
@@ -2123,7 +2021,7 @@ const Payment = () => {
                           formik.setFieldValue(
                             "brokerageAmount",
                             (
-                              (Number(formik.values.amount) *
+                              (Number(formik.values.taxableAmount) *
                                 Number(e.target.value)) /
                               100
                             ).toFixed(2)
@@ -2144,15 +2042,38 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    )}
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    {dialogMode === "view" ? (
+                      <>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                        >
+                          Brokerage Amount
+                        </Typography>
+                        <Typography
+                          variant="body1"
+                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                        >
+                          ₹
+                          {(
+                            (Number(formik.values.taxableAmount) *
+                              Number(formik.values.brokeragePercentage)) /
+                            100
+                          ).toFixed(2)}
+                        </Typography>
+                      </>
+                    ) : (
                       <TextField
                         fullWidth
                         id="brokerageAmount"
                         name="brokerageAmount"
                         label="Brokerage Amount"
                         value={(
-                          (Number(formik.values.amount) *
+                          (Number(formik.values.taxableAmount) *
                             Number(formik.values.brokeragePercentage)) /
                           100
                         ).toFixed(2)}
@@ -2163,11 +2084,11 @@ const Payment = () => {
                           },
                         }}
                       />
-                    </Grid>
+                    )}
                   </Grid>
-                </Box>
-              </>
-            )}
+                </Grid>
+              </Box>
+            </>
           </DialogContent>
           <DialogActions sx={{ p: { xs: 1, sm: 2 } }}>
             {dialogMode === "view" ? null : (
@@ -2249,6 +2170,34 @@ const Payment = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+        <Button
+            onClick={() => navigate("/parties")}
+            startIcon={<ArrowBack />}
+            variant="outlined"
+            size="medium"
+            sx={{
+              mt: 2,
+              width: { xs: "100%", sm: "auto" },
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+            }}
+          >
+            Back to All Parties
+          </Button>
       </Paper>
     </Container>
   );
