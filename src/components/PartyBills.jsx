@@ -423,6 +423,7 @@ const PartyBills = () => {
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              size="small"
               sx={{
                 minWidth: { xs: "100%", sm: 250 },
                 "& .MuiInputBase-root": {
@@ -439,6 +440,7 @@ const PartyBills = () => {
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              size="small"
               sx={{
                 minWidth: { xs: "100%", sm: 250 },
                 "& .MuiInputBase-root": {
@@ -461,6 +463,7 @@ const PartyBills = () => {
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
                 label="Status"
+                size="small"
                 sx={{
                   fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 }}
@@ -474,10 +477,10 @@ const PartyBills = () => {
               variant="contained"
               color="primary"
               onClick={handleSearch}
-              size="large"
+              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: "90px" },
-                height: { xs: "50px", sm: "50px" },
+                minWidth: { xs: "100%", sm: "100px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
                 textTransform: "none",
               }}
@@ -491,10 +494,10 @@ const PartyBills = () => {
             component={Link}
             to={`/add-bill/${partyId}`}
             startIcon={<Add />}
-            size="large"
+            size="small"
             sx={{
-              minWidth: { xs: "100%", sm: "90px" },
-              height: { xs: "50px", sm: "50px" },
+              minWidth: { xs: "100%", sm: "100px" },
+              height: { xs: "40px", sm: "40px" },
               fontSize: { xs: "0.9rem", sm: "1rem" },
               textTransform: "none",
             }}
@@ -673,9 +676,10 @@ const PartyBills = () => {
             startIcon={<ArrowBack />}
             variant="outlined"
             color="primary"
-            size="medium"
+            size="small"
             sx={{
               width: { xs: "100%", sm: "auto" },
+              height: { xs: "40px", sm: "40"},
               fontSize: { xs: "0.75rem", sm: "0.875rem" },
             }}
           >

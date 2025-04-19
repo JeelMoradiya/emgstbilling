@@ -802,11 +802,11 @@ const Payment = () => {
             color="primary"
             onClick={handleSearch}
             startIcon={<Search />}
-            size="medium"
+            size="small"
             sx={{
               width: { xs: "100%", sm: "auto" },
+              height: { xs: "40px", sm: "40px" },
               fontSize: { xs: "0.75rem", sm: "0.875rem" },
-              height: "40px",
             }}
           >
             Search
@@ -1005,7 +1005,7 @@ const Payment = () => {
                       <TableCell>
                         <IconButton
                           onClick={(e) => handleMenuOpen(e, bill.id)}
-                          size={isMobile ? "small" : "medium"}
+                          size="small"
                         >
                           <MoreVert />
                         </IconButton>
@@ -1144,7 +1144,7 @@ const Payment = () => {
                   color="inherit"
                   onClick={() => setDialogMode("edit")}
                   sx={{ mr: 1 }}
-                  size={isMobile ? "small" : "medium"}
+                  size="small"
                 >
                   <Edit />
                 </IconButton>
@@ -1153,7 +1153,7 @@ const Payment = () => {
                 edge="end"
                 color="inherit"
                 onClick={handleCloseDialog}
-                size={isMobile ? "small" : "medium"}
+                size="small"
               >
                 <Close />
               </IconButton>
@@ -1180,7 +1180,7 @@ const Payment = () => {
                         <Typography
                           variant="subtitle2"
                           color="text.secondary"
-                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" },mb: 0.5 }}
                         >
                           Payment Method
                         </Typography>
@@ -1222,6 +1222,7 @@ const Payment = () => {
                           onBlur={formik.handleBlur}
                           label="Payment Method"
                           disabled={dialogMode === "edit"}
+                          size="small"
                           sx={{
                             fontSize: { xs: "0.9rem", sm: "1rem" },
                           }}
@@ -1299,6 +1300,7 @@ const Payment = () => {
                           formik.touched.amount && formik.errors.amount
                         }
                         disabled
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1344,6 +1346,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.chequeNo && formik.errors.chequeNo
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1386,6 +1389,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.bank && formik.errors.bank
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1433,6 +1437,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.upiId && formik.errors.upiId
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1476,6 +1481,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.upiName && formik.errors.upiName
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1518,6 +1524,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.bank && formik.errors.bank
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1574,6 +1581,7 @@ const Payment = () => {
                               onChange={formik.handleChange}
                               onBlur={formik.handleBlur}
                               label="RTGS/NEFT"
+                              size="small"
                               sx={{
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
                               }}
@@ -1640,6 +1648,7 @@ const Payment = () => {
                             helperText={
                               formik.touched.bank && formik.errors.bank
                             }
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1694,6 +1703,7 @@ const Payment = () => {
                               formik.touched.tds && Boolean(formik.errors.tds)
                             }
                             helperText={formik.touched.tds && formik.errors.tds}
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1738,6 +1748,7 @@ const Payment = () => {
                               100
                             ).toFixed(2)}
                             disabled
+                            size="small"
                             sx={{
                               "& .MuiInputBase-root": {
                                 fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1792,6 +1803,7 @@ const Payment = () => {
                           formik.touched.otherClaimPercentage &&
                           formik.errors.otherClaimPercentage
                         }
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1843,6 +1855,7 @@ const Payment = () => {
                         helperText={
                           formik.touched.otherClaim && formik.errors.otherClaim
                         }
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1900,6 +1913,7 @@ const Payment = () => {
                         helperText={
                           formik.touched.brokerName && formik.errors.brokerName
                         }
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1942,6 +1956,7 @@ const Payment = () => {
                           formik.touched.brokerPhone &&
                           formik.errors.brokerPhone
                         }
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1985,6 +2000,7 @@ const Payment = () => {
                           formik.errors.taxableAmount
                         }
                         disabled
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -2036,6 +2052,7 @@ const Payment = () => {
                           formik.touched.brokeragePercentage &&
                           formik.errors.brokeragePercentage
                         }
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -2078,6 +2095,7 @@ const Payment = () => {
                           100
                         ).toFixed(2)}
                         disabled
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -2097,10 +2115,10 @@ const Payment = () => {
                 variant="contained"
                 onClick={formik.handleSubmit}
                 disabled={formik.isSubmitting}
-                size="large"
+                size="small"
                 sx={{
-                  minWidth: { xs: "100%", sm: "160px" },
-                  height: { xs: "48px", sm: "56px" },
+                  minWidth: { xs: "100%", sm: "100px" },
+                  height: { xs: "40px", sm: "40px" },
                   fontSize: { xs: "0.9rem", sm: "1rem" },
                 }}
               >
@@ -2145,10 +2163,10 @@ const Payment = () => {
               onClick={() => setOpenDeleteDialog(false)}
               variant="outlined"
               color="primary"
-              size="large"
+              size="small"
               sx={{
                 minWidth: { xs: "100%", sm: "120px" },
-                height: { xs: "48px", sm: "56px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
               }}
             >
@@ -2158,11 +2176,11 @@ const Payment = () => {
               onClick={confirmDelete}
               variant="contained"
               color="error"
-              size="large"
+              size="small"
               startIcon={<Delete />}
               sx={{
                 minWidth: { xs: "100%", sm: "120px" },
-                height: { xs: "48px", sm: "56px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
               }}
             >
@@ -2186,18 +2204,19 @@ const Payment = () => {
           </Alert>
         </Snackbar>
         <Button
-            onClick={() => navigate("/parties")}
-            startIcon={<ArrowBack />}
-            variant="outlined"
-            size="medium"
-            sx={{
-              mt: 2,
-              width: { xs: "100%", sm: "auto" },
-              fontSize: { xs: "0.75rem", sm: "0.875rem" },
-            }}
-          >
-            Back to All Parties
-          </Button>
+          onClick={() => navigate("/parties")}
+          startIcon={<ArrowBack />}
+          variant="outlined"
+          size="small"
+          sx={{
+            mt: 2,
+            width: { xs: "100%", sm: "auto" },
+            height: { xs: "40px", sm: "40px" },
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+          }}
+        >
+          Back to All Parties
+        </Button>
       </Paper>
     </Container>
   );

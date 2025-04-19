@@ -25,9 +25,6 @@ import {
 } from "@mui/material";
 import {
   Search,
-  Wysiwyg,
-  Payments,
-  CurrencyRupee,
   MoreVert,
 } from "@mui/icons-material";
 
@@ -223,6 +220,7 @@ const AllParties = () => {
               placeholder="Search by company name or GST number"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              size="small"
               sx={{
                 "& .MuiInputBase-root": {
                   fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -233,10 +231,10 @@ const AllParties = () => {
               variant="contained"
               color="primary"
               onClick={handleSearch}
-              size="large"
+              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: "80px" },
-                height: { xs: "48px", sm: "56px" },
+                minWidth: { xs: "100%", sm: "100px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
                 textTransform: "none",
               }}

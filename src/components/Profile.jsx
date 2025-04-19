@@ -261,7 +261,10 @@ const Profile = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4, bgcolor: 'white', minHeight: '100vh' }}>
+    <Container
+      maxWidth="lg"
+      sx={{ mt: 4, mb: 4, bgcolor: "white", minHeight: "100vh" }}
+    >
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
@@ -287,7 +290,7 @@ const Profile = () => {
           sx={{
             p: { xs: 2, sm: 3, md: 4 },
             borderRadius: 2,
-            bgcolor: 'white'
+            bgcolor: "white",
           }}
         >
           <Box
@@ -304,7 +307,7 @@ const Profile = () => {
               sx={{
                 width: { xs: 64, sm: 80 },
                 height: { xs: 64, sm: 80 },
-                bgcolor: '#2c3e50',
+                bgcolor: "#2c3e50",
                 fontSize: { xs: "1.75rem", sm: "2.25rem" },
                 fontWeight: "bold",
               }}
@@ -324,7 +327,7 @@ const Profile = () => {
                 sx={{
                   fontSize: { xs: "1.75rem", sm: "2.25rem", md: "2.75rem" },
                   fontWeight: 500,
-                  color: '#2c3e50',
+                  color: "#2c3e50",
                   lineHeight: 1.3,
                 }}
               >
@@ -351,7 +354,7 @@ const Profile = () => {
             <Typography
               variant="h6"
               gutterBottom
-              sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+              sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#2c3e50" }}
             >
               User Information
             </Typography>
@@ -366,11 +369,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -383,11 +387,12 @@ const Profile = () => {
                   disabled={true}
                   helperText={isEditing ? "Email cannot be changed" : ""}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -400,11 +405,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -413,7 +419,11 @@ const Profile = () => {
             <Typography
               variant="h6"
               gutterBottom
-              sx={{ mt: 4, fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+              sx={{
+                mt: 4,
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+                color: "#2c3e50",
+              }}
             >
               GST Information
             </Typography>
@@ -427,11 +437,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -444,11 +455,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -461,11 +473,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -474,7 +487,11 @@ const Profile = () => {
             <Typography
               variant="h6"
               gutterBottom
-              sx={{ mt: 4, fontSize: { xs: "1rem", sm: "1.25rem" }, color: '#2c3e50' }}
+              sx={{
+                mt: 4,
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+                color: "#2c3e50",
+              }}
             >
               Address Information
             </Typography>
@@ -489,11 +506,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -507,11 +525,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -525,11 +544,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -542,11 +562,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!isEditing}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -562,11 +583,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 >
                   <option value="">Select State</option>
@@ -589,11 +611,12 @@ const Profile = () => {
                   disabled={!isEditing || !formData.address.state}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 >
                   <option value="">Select City</option>
@@ -615,11 +638,12 @@ const Profile = () => {
                   disabled={!isEditing}
                   required
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiInputBase-input": {
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                     },
-                    '& .MuiInputLabel-root': { color: '#2c3e50' }
+                    "& .MuiInputLabel-root": { color: "#2c3e50" },
                   }}
                 />
               </Grid>
@@ -639,14 +663,16 @@ const Profile = () => {
                   variant="contained"
                   startIcon={<EditIcon />}
                   onClick={handleEdit}
+                  size="small"
                   sx={{
                     width: { xs: "100%", sm: "auto" },
+                    height: { xs: "40px", sm: "40px" },
                     fontSize: { xs: "0.875rem", sm: "1rem" },
                     py: 1.5,
-                    bgcolor: '#2c3e50',
-                    color: 'white',
-                    '&:hover': { bgcolor: '#34495e' },
-                    borderRadius: 1
+                    bgcolor: "#2c3e50",
+                    color: "white",
+                    "&:hover": { bgcolor: "#34495e" },
+                    borderRadius: 1,
                   }}
                 >
                   Edit Profile
@@ -657,13 +683,15 @@ const Profile = () => {
                     variant="outlined"
                     startIcon={<CancelIcon />}
                     onClick={handleCancel}
+                    size="small"
                     sx={{
                       width: { xs: "100%", sm: "auto" },
+                      height: { xs: "40px", sm: "40px" },
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                       py: 1.5,
                       borderRadius: 1,
-                      color: '#2c3e50',
-                      borderColor: '#2c3e50'
+                      color: "#2c3e50",
+                      borderColor: "#2c3e50",
                     }}
                   >
                     Cancel
@@ -672,14 +700,16 @@ const Profile = () => {
                     type="submit"
                     variant="contained"
                     startIcon={<SaveIcon />}
+                    size="small"
                     sx={{
                       width: { xs: "100%", sm: "auto" },
+                      height: { xs: "40px", sm: "40px" },
                       fontSize: { xs: "0.875rem", sm: "1rem" },
                       py: 1.5,
-                      bgcolor: '#2c3e50',
-                      color: 'white',
-                      '&:hover': { bgcolor: '#34495e' },
-                      borderRadius: 1
+                      bgcolor: "#2c3e50",
+                      color: "white",
+                      "&:hover": { bgcolor: "#34495e" },
+                      borderRadius: 1,
                     }}
                   >
                     Save Changes

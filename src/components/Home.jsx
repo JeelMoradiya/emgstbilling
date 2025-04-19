@@ -524,6 +524,7 @@ const Home = () => {
                   label="Search By Party Name"
                   value={partySearch}
                   onChange={(e) => setPartySearch(e.target.value)}
+                  size="small"
                   sx={{
                     minWidth: { xs: "100%", sm: 200, md: 300 },
                     "& .MuiInputBase-root": {
@@ -537,6 +538,7 @@ const Home = () => {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  size="small"
                   sx={{
                     minWidth: { xs: "100%", sm: 200, md: 300 },
                     "& .MuiInputBase-root": {
@@ -550,6 +552,7 @@ const Home = () => {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  size="small"
                   sx={{
                     minWidth: { xs: "100%", sm: 200, md: 300 },
                     "& .MuiInputBase-root": {
@@ -569,6 +572,7 @@ const Home = () => {
                     value={statusFilter}
                     onChange={handleStatusFilterChange}
                     label="Status"
+                    size="small"
                     sx={{
                       "& .MuiSelect-select": {
                         fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -584,10 +588,10 @@ const Home = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleSearch}
-                  size="large"
+                  size="small"
                   sx={{
                     minWidth: { xs: "100%", sm: "90px" },
-                    height: { xs: "48px", sm: "56px" },
+                    height: { xs: "40px", sm: "40px" },
                     fontSize: { xs: "0.9rem", sm: "1rem" },
                     textTransform: "none",
                   }}
@@ -725,10 +729,10 @@ const Home = () => {
                               to={`/bill/${bill.id}`}
                               variant="outlined"
                               color="primary"
-                              size="large"
+                              size="small"
                               sx={{
-                                minWidth: { xs: "100%", sm: "160px" },
-                                height: { xs: "48px", sm: "56px" },
+                                minWidth: { xs: "100%", sm: "100px" },
+                                height: { xs: "40px", sm: "40px" },
                                 fontSize: { xs: "0.8rem", sm: "0.9rem" },
                                 textTransform: "none",
                               }}

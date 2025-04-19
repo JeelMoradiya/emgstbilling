@@ -477,6 +477,7 @@ const PartyManagement = () => {
               placeholder="Search by Company name or GST number or owner name"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              size="small"
               sx={{
                 "& .MuiInputBase-root": {
                   fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -487,10 +488,10 @@ const PartyManagement = () => {
               variant="contained"
               color="primary"
               onClick={handleSearch}
-              size="large"
+              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: "80px" },
-                height: { xs: "48px", sm: "56px" },
+                minWidth: { xs: "100%", sm: "100px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
                 textTransform: "none",
               }}
@@ -504,10 +505,10 @@ const PartyManagement = () => {
             onClick={handleOpenDialog}
             startIcon={<AddIcon />}
             disabled={!currentUser}
-            size="large"
+            size="small"
             sx={{
-              minWidth: { xs: "100%", sm: "160px" },
-              height: { xs: "48px", sm: "56px" },
+              minWidth: { xs: "100%", sm: "100px" },
+              height: { xs: "40px", sm: "40px" },
               fontSize: { xs: "0.9rem", sm: "1rem" },
               textTransform: "none",
             }}
@@ -1182,6 +1183,7 @@ const PartyManagement = () => {
                           formik.errors.companyName
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1204,6 +1206,7 @@ const PartyManagement = () => {
                         }
                         helperText={formik.touched.gstNo && formik.errors.gstNo}
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1228,6 +1231,7 @@ const PartyManagement = () => {
                           formik.touched.mobileNo && formik.errors.mobileNo
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1253,6 +1257,7 @@ const PartyManagement = () => {
                           formik.errors.gstOwnerName
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1295,6 +1300,7 @@ const PartyManagement = () => {
                           formik.touched.fullName && formik.errors.fullName
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1317,6 +1323,7 @@ const PartyManagement = () => {
                         }
                         helperText={formik.touched.email && formik.errors.email}
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1360,6 +1367,7 @@ const PartyManagement = () => {
                           formik.errors.plotHouseNo
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1381,6 +1389,7 @@ const PartyManagement = () => {
                         }
                         helperText={formik.touched.line1 && formik.errors.line1}
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1402,6 +1411,7 @@ const PartyManagement = () => {
                         }
                         helperText={formik.touched.area && formik.errors.area}
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1426,6 +1436,7 @@ const PartyManagement = () => {
                           formik.touched.landmark && formik.errors.landmark
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1458,6 +1469,7 @@ const PartyManagement = () => {
                           onBlur={formik.handleBlur}
                           label="State"
                           variant="outlined"
+                          size="small"
                         >
                           <MenuItem value="">
                             <em>Select State</em>
@@ -1505,6 +1517,7 @@ const PartyManagement = () => {
                           onBlur={formik.handleBlur}
                           label="City"
                           variant="outlined"
+                          size="small"
                         >
                           <MenuItem value="">
                             <em>Select City</em>
@@ -1546,6 +1559,7 @@ const PartyManagement = () => {
                           formik.touched.pincode && formik.errors.pincode
                         }
                         variant="outlined"
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
                             fontSize: { xs: "0.9rem", sm: "1rem" },
@@ -1567,10 +1581,10 @@ const PartyManagement = () => {
                     variant="contained"
                     onClick={formik.handleSubmit}
                     disabled={isSubmitting || !currentUser}
-                    size="large"
+                    size="small"
                     sx={{
-                      minWidth: { xs: "100%", sm: "160px" },
-                      height: { xs: "48px", sm: "56px" },
+                      minWidth: { xs: "100%", sm: "100px" },
+                      height: { xs: "40px", sm: "40px" },
                       fontSize: { xs: "0.9rem", sm: "1rem" },
                       textTransform: "none",
                     }}
@@ -1617,10 +1631,10 @@ const PartyManagement = () => {
               onClick={() => setOpenDeleteDialog(false)}
               variant="outlined"
               color="primary"
-              size="large"
+              size="small"
               sx={{
-                minWidth: { xs: "100%", sm: "120px" },
-                height: { xs: "48px", sm: "56px" },
+                minWidth: { xs: "100%", sm: "100px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
                 textTransform: "none",
               }}
@@ -1631,11 +1645,11 @@ const PartyManagement = () => {
               onClick={confirmDelete}
               variant="contained"
               color="error"
-              size="large"
+              size="small"
               startIcon={<DeleteIcon />}
               sx={{
-                minWidth: { xs: "100%", sm: "120px" },
-                height: { xs: "48px", sm: "56px" },
+                minWidth: { xs: "100%", sm: "100px" },
+                height: { xs: "40px", sm: "40px" },
                 fontSize: { xs: "0.9rem", sm: "1rem" },
                 textTransform: "none",
               }}
