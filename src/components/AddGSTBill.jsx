@@ -62,7 +62,7 @@ const AddGSTBill = () => {
   ]);
   const [discount, setDiscount] = useState("");
   const [nextBillNo, setNextBillNo] = useState(null);
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [openDialog, setOpenDialog] = useState(false);
   const [userState, setUserState] = useState(""); 
   const [userGSTCode, setUserGSTCode] = useState("");
@@ -130,29 +130,13 @@ const AddGSTBill = () => {
     notes: Yup.string()
       .optional()
       .max(500, "Notes cannot exceed 500 characters"),
-    bankName: Yup.string()
-      .optional()
-      .max(100, "Bank name cannot exceed 100 characters"),
-    accountName: Yup.string()
-      .optional()
-      .max(100, "Account name cannot exceed 100 characters"),
-    accountNumber: Yup.string()
-      .optional()
-      .matches(/^\d{9,18}$/, {
-        message: "Account number must be 9 to 18 digits",
-        excludeEmptyString: true,
-      }),
-    ifscCode: Yup.string()
-      .optional()
-      .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, {
-        message: "Invalid IFSC code format",
-        excludeEmptyString: true,
-      }),
   });
+  
 
   const formik = useFormik({
     initialValues: {
       billNo: "",
+      challanNo: "",
       date: format(new Date(), "yyyy-MM-dd"),
       partyId: "",
       paymentMethod: "cheque",
@@ -161,11 +145,6 @@ const AddGSTBill = () => {
       notes: "",
       items: items,
       discount: "",
-      challanNo: "",
-      bankName: "",
-      accountName: "",
-      accountNumber: "",
-      ifscCode: "",
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -467,7 +446,9 @@ const AddGSTBill = () => {
                 value={formik.values.challanNo}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                error={formik.touched.challanNo && Boolean(formik.errors.challanNo)}
+                error={
+                  formik.touched.challanNo && Boolean(formik.errors.challanNo)
+                }
                 helperText={formik.touched.challanNo && formik.errors.challanNo}
                 variant="outlined"
                 sx={{
@@ -1065,102 +1046,6 @@ const AddGSTBill = () => {
             </Grid>
 
             <Grid item xs={12}>
-              <Typography
-                variant={isMobile ? "h6" : "h5"}
-                gutterBottom
-                sx={{
-                  mt: 3,
-                  mb: 2,
-                  color: "text.primary",
-                  textAlign: { xs: "center", sm: "left" },
-                  fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
-                }}
-              >
-                Bank Details (Optional)
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                id="bankName"
-                name="bankName"
-                label="Bank Name"
-                value={formik.values.bankName}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.bankName && Boolean(formik.errors.bankName)}
-                helperText={formik.touched.bankName && formik.errors.bankName}
-                variant="outlined"
-                sx={{
-                  "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                id="accountName"
-                name="accountName"
-                label="Account Name"
-                value={formik.values.accountName}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.accountName && Boolean(formik.errors.accountName)}
-                helperText={formik.touched.accountName && formik.errors.accountName}
-                variant="outlined"
-                sx={{
-                  "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                id="accountNumber"
-                name="accountNumber"
-                label="Account Number"
-                value={formik.values.accountNumber}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.accountNumber && Boolean(formik.errors.accountNumber)}
-                helperText={formik.touched.accountNumber && formik.errors.accountNumber}
-                variant="outlined"
-                sx={{
-                  "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                id="ifscCode"
-                name="ifscCode"
-                label="IFSC Code"
-                value={formik.values.ifscCode}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.ifscCode && Boolean(formik.errors.ifscCode)}
-                helperText={formik.touched.ifscCode && formik.errors.ifscCode}
-                variant="outlined"
-                sx={{
-                  "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
               <Paper
                 elevation={2}
                 sx={{
@@ -1207,36 +1092,47 @@ const AddGSTBill = () => {
                       {taxableAmount.toFixed(2)}
                     </Typography>
                     {cgst > 0 && (
-                      
-                        <Typography
-                          variant="body1"
-                          gutterBottom
-                          sx={{
-                            fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                          }}
-                        >
-                          <strong>CGST ({formik.values.gstRate / 2}%):</strong> ₹
-                          {cgst.toFixed(2)}
-                        </Typography>
-                        )}
+                      <Typography
+                        variant="body1"
+                        gutterBottom
+                        sx={{
+                          fontSize: {
+                            xs: "0.85rem",
+                            sm: "0.95rem",
+                            md: "1rem",
+                          },
+                        }}
+                      >
+                        <strong>CGST ({formik.values.gstRate / 2}%):</strong> ₹
+                        {cgst.toFixed(2)}
+                      </Typography>
+                    )}
                     {sgst > 0 && (
-                        <Typography
-                          variant="body1"
-                          gutterBottom
-                          sx={{
-                            fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                          }}
-                        >
-                          <strong>SGST ({formik.values.gstRate / 2}%):</strong> ₹
-                          {sgst.toFixed(2)}
-                        </Typography>
+                      <Typography
+                        variant="body1"
+                        gutterBottom
+                        sx={{
+                          fontSize: {
+                            xs: "0.85rem",
+                            sm: "0.95rem",
+                            md: "1rem",
+                          },
+                        }}
+                      >
+                        <strong>SGST ({formik.values.gstRate / 2}%):</strong> ₹
+                        {sgst.toFixed(2)}
+                      </Typography>
                     )}
                     {igst > 0 && (
                       <Typography
                         variant="body1"
                         gutterBottom
                         sx={{
-                          fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                          fontSize: {
+                            xs: "0.85rem",
+                            sm: "0.95rem",
+                            md: "1rem",
+                          },
                         }}
                       >
                         <strong>IGST ({formik.values.gstRate}%):</strong> ₹

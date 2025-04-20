@@ -234,24 +234,6 @@ const ViewBill = () => {
     notes: Yup.string()
       .optional()
       .max(500, "Notes cannot exceed 500 characters"),
-    bankName: Yup.string()
-      .optional()
-      .max(100, "Bank name cannot exceed 100 characters"),
-    accountName: Yup.string()
-      .optional()
-      .max(100, "Account name cannot exceed 100 characters"),
-    accountNumber: Yup.string()
-      .optional()
-      .matches(/^\d{9,18}$/, {
-        message: "Account number must be 9 to 18 digits",
-        excludeEmptyString: true,
-      }),
-    ifscCode: Yup.string()
-      .optional()
-      .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/, {
-        message: "Invalid IFSC code format",
-        excludeEmptyString: true,
-      }),
   });
 
   useEffect(() => {
@@ -289,10 +271,6 @@ const ViewBill = () => {
             date: billData.date
               ? format(new Date(billData.date), "yyyy-MM-dd")
               : format(new Date(), "yyyy-MM-dd"),
-            bankName: billData.bankName || "",
-            accountName: billData.accountName || "",
-            accountNumber: billData.accountNumber || "",
-            ifscCode: billData.ifscCode || "",
             challanNo: billData.challanNo || "",
           };
           setBill(sanitizedBill);
@@ -333,7 +311,7 @@ const ViewBill = () => {
     const isInterState = values.partyDetails?.state !== userState;
     const cgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
     const sgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
-    const igst = isInterState ? taxableAmount * (values.gstRate / 100) : 0;
+    const igst = isInterState ? 0 : taxableAmount * (values.gstRate / 100);
     const total = taxableAmount + (isInterState ? igst : cgst + sgst);
     return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
   };
@@ -361,10 +339,6 @@ const ViewBill = () => {
       items: [{ name: "", hsn: "", quantity: "", price: "" }],
       discount: "",
       challanNo: "",
-      bankName: "",
-      accountName: "",
-      accountNumber: "",
-      ifscCode: "",
     },
     validationSchema,
     enableReinitialize: true,
@@ -703,6 +677,13 @@ const ViewBill = () => {
               color="text.secondary"
               sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
             >
+              UDYAM No.:{userProfile?.udyamNo || "N/A"}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontSize: { xs: "1rem", sm: "1rem" } }}
+            >
               Address: {formatAddress(userProfile?.address)}
             </Typography>
           </Grid>
@@ -771,7 +752,7 @@ const ViewBill = () => {
           </Grid>
         </Grid>
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={3} sx={{ mb:2 }}>
           <Grid item xs={12} md={6}>
             <Typography
               variant="subtitle1"
@@ -1040,7 +1021,7 @@ const ViewBill = () => {
             </Typography>
             {isEditing ? (
               <>
-                {/* <FormControl fullWidth sx={{ mb: 2 }}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
                   <InputLabel>Payment Method *</InputLabel>
                   <Select
                     name="paymentMethod"
@@ -1069,7 +1050,7 @@ const ViewBill = () => {
                         {formik.errors.paymentMethod}
                       </Typography>
                     )}
-                </FormControl> */}
+                </FormControl>
                 <FormControl fullWidth>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -1116,8 +1097,6 @@ const ViewBill = () => {
           variant={isMobile ? "h6" : "h5"}
           gutterBottom
           sx={{
-            mt: 3,
-            mb: 2,
             color: "text.primary",
             textAlign: { xs: "center", sm: "left" },
             fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
@@ -1483,7 +1462,7 @@ const ViewBill = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   multiline
-                  rows={3}
+                  rows={2}
                   error={formik.touched.notes && Boolean(formik.errors.notes)}
                   helperText={formik.touched.notes && formik.errors.notes}
                   sx={{
@@ -1504,119 +1483,52 @@ const ViewBill = () => {
                 </Typography>
               </>
             )}
-
-            <Typography
-              variant="subtitle1"
-              gutterBottom
+            <Paper
+              elevation={2}
               sx={{
-                fontWeight: "bold",
-                fontSize: { xs: "1rem", sm: "1.125rem" },
+                p: { xs: 2, sm: 3 },
+                borderRadius: 2,
+                backgroundColor: "#f5f5f5",
                 mt: 2,
               }}
             >
-              Bank Details:
-            </Typography>
-            {isEditing ? (
-              <>
-                <TextField
-                  fullWidth
-                  label="Bank Name"
-                  name="bankName"
-                  value={formik.values.bankName}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={
-                    formik.touched.bankName && Boolean(formik.errors.bankName)
-                  }
-                  helperText={formik.touched.bankName && formik.errors.bankName}
-                  sx={{ mb: 2 }}
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  fullWidth
-                  label="Account Name"
-                  name="accountName"
-                  value={formik.values.accountName}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={
-                    formik.touched.accountName &&
-                    Boolean(formik.errors.accountName)
-                  }
-                  helperText={
-                    formik.touched.accountName && formik.errors.accountName
-                  }
-                  sx={{ mb: 2 }}
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  fullWidth
-                  label="Account Number"
-                  name="accountNumber"
-                  value={formik.values.accountNumber}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={
-                    formik.touched.accountNumber &&
-                    Boolean(formik.errors.accountNumber)
-                  }
-                  helperText={
-                    formik.touched.accountNumber && formik.errors.accountNumber
-                  }
-                  sx={{ mb: 2 }}
-                  variant="outlined"
-                  size="small"
-                />
-                <TextField
-                  fullWidth
-                  label="IFSC Code"
-                  name="ifscCode"
-                  value={formik.values.ifscCode}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={
-                    formik.touched.ifscCode && Boolean(formik.errors.ifscCode)
-                  }
-                  helperText={formik.touched.ifscCode && formik.errors.ifscCode}
-                  sx={{ mb: 2 }}
-                  variant="outlined"
-                  size="small"
-                />
-              </>
-            ) : (
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{
+                  fontWeight: "bold",
+                  fontSize: { xs: "1rem", sm: "1.125rem" },
+                }}
+              >
+                Bank Details:
+              </Typography>
               <>
                 <Typography
                   sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
                 >
-                  <strong>Bank Name:</strong> {bill.bankName || "N/A"}
+                  <strong>Bank Name:</strong>{" "}
+                  {userProfile?.bankDetails?.bankName || "N/A"}
                 </Typography>
                 <Typography
                   sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
                 >
-                  <strong>Account Name:</strong> {bill.accountName || "N/A"}
+                  <strong>Account Name:</strong>{" "}
+                  {userProfile?.bankDetails?.accountName || "N/A"}
                 </Typography>
                 <Typography
                   sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
                 >
-                  <strong>Account Number:</strong> {bill.accountNumber || "N/A"}
+                  <strong>Account Number:</strong>{" "}
+                  {userProfile?.bankDetails?.accountNumber || "N/A"}
                 </Typography>
                 <Typography
                   sx={{ fontSize: { xs: "0.9rem", sm: "1rem" }, mb: 0.5 }}
                 >
-                  <strong>IFSC Code:</strong> {bill.ifscCode || "N/A"}
+                  <strong>IFSC Code:</strong>{" "}
+                  {userProfile?.bankDetails?.ifscCode || "N/A"}
                 </Typography>
               </>
-            )}
-
-            <Typography
-              variant="body1"
-              gutterBottom
-              sx={{ mt: 2, fontSize: { xs: "0.9rem", sm: "1rem" } }}
-            >
-              <strong>Amount in Words:</strong> {numberToWords(total)}
-            </Typography>
+            </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
             <Paper
@@ -1624,7 +1536,7 @@ const ViewBill = () => {
               sx={{
                 p: { xs: 2, sm: 3 },
                 borderRadius: 2,
-                backgroundColor: "background.default",
+                backgroundColor: "#f5f5f5",
               }}
             >
               <Box sx={{ mb: 1 }}>
@@ -1767,6 +1679,13 @@ const ViewBill = () => {
                     sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
                   >
                     <strong>₹{total.toFixed(2)}</strong>
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    gutterBottom
+                    sx={{ mt: 2, fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                  >
+                    <strong>Amount in Words:</strong> {numberToWords(total)}
                   </Typography>
                 </Grid>
               </Box>

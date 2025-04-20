@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 4,
     marginBottom: 10,
-    marginTop: 10,
+    marginTop: 5,
   },
   totalRow: {
     flexDirection: "row",
@@ -141,13 +141,12 @@ const styles = StyleSheet.create({
   signatureSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 40,
+    marginTop: 50,
   },
   signatureBox: {
     width: "48%",
     textAlign: "center",
     borderTop: "1px solid #2c3e50",
-    paddingTop: 10,
     color: "#333333",
   },
   footer: {
@@ -190,16 +189,19 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     igst: bill.igst || 0,
     total: bill.total || 0,
     notes: bill.notes || "",
-    bankName: bill.bankName || "N/A",
-    accountName: bill.accountName || "N/A",
-    accountNumber: bill.accountNumber || "N/A",
-    ifscCode: bill.ifscCode || "N/A",
   };
 
   const safeUser = {
     gstNo: user.gstNo || "N/A",
+    udyamNo: user.udyamNo || "N/A",
     companyName: user.companyName || "N/A",
     address: user.address || {},
+    bankDetails: {
+      bankName: user.bankDetails?.bankName || "N/A",
+      accountName: user.bankDetails?.accountName || "N/A",
+      accountNumber: user.bankDetails?.accountNumber || "N/A",
+      ifscCode: user.bankDetails?.ifscCode || "N/A",
+    },
   };
 
   return (
@@ -209,7 +211,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
           <View style={styles.headerLeft}>
             <Text style={styles.title}>{safeUser.companyName}</Text>
             <Text style={styles.subtitle}>GSTIN: {safeUser.gstNo}</Text>
-            <Text style={styles.subtitle}>UDYAM Number</Text>
+            <Text style={styles.subtitle}>UDYAM No.: {safeUser.udyamNo}</Text>
             <Text style={styles.subtitle}>
               Address: {formatAddress(safeUser.address)}
             </Text>
@@ -246,7 +248,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               <Text>Address: {formatAddress(safeBill.partyDetails)}</Text>
             </View>
             <View>
-              {/* <Text
+              <Text
                 style={{
                   fontWeight: "bold",
                   marginBottom: 5,
@@ -255,7 +257,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               >
                 Payment Details:
               </Text>
-              <Text>Method: {safeBill.paymentMethod.toUpperCase()}</Text> */}
+              <Text>Method: {safeBill.paymentMethod.toUpperCase()}</Text>
               <Text>Status: {safeBill.status.toUpperCase()}</Text>
             </View>
           </View>
@@ -303,12 +305,12 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  {item.price.toFixed(2) || 0}
+                  {(item.price || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.tableCol}>
                 <Text style={styles.tableCell}>
-                  {(item.quantity || 0) * (item.price || 0).toFixed(2)}
+                  {((item.quantity || 0) * (item.price || 0)).toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -320,39 +322,39 @@ const BillPDF = ({ bill = {}, user = {} }) => {
             {safeBill.notes && (
               <View style={styles.notesBox}>
                 <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                  Additional Notes:
+                  Additional Details:
                 </Text>
                 <Text style={{ fontSize: 9, marginTop: 5 }}>
                   {safeBill.notes}
                 </Text>
               </View>
             )}
-            {(safeBill.bankName ||
-              safeBill.accountName ||
-              safeBill.accountNumber ||
-              safeBill.ifscCode) && (
+            {(safeUser.bankDetails.bankName !== "N/A" ||
+              safeUser.bankDetails.accountName !== "N/A" ||
+              safeUser.bankDetails.accountNumber !== "N/A" ||
+              safeUser.bankDetails.ifscCode !== "N/A") && (
               <View style={styles.bankDetailsBox}>
                 <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
                   Bank Details:
                 </Text>
-                {safeBill.bankName !== "N/A" && (
+                {safeUser.bankDetails.bankName !== "N/A" && (
                   <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Bank Name: {safeBill.bankName}
+                    Bank Name: {safeUser.bankDetails.bankName}
                   </Text>
                 )}
-                {safeBill.accountName !== "N/A" && (
+                {safeUser.bankDetails.accountName !== "N/A" && (
                   <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Account Name: {safeBill.accountName}
+                    Account Name: {safeUser.bankDetails.accountName}
                   </Text>
                 )}
-                {safeBill.accountNumber !== "N/A" && (
+                {safeUser.bankDetails.accountNumber !== "N/A" && (
                   <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Account Number: {safeBill.accountNumber}
+                    Account Number: {safeUser.bankDetails.accountNumber}
                   </Text>
                 )}
-                {safeBill.ifscCode !== "N/A" && (
+                {safeUser.bankDetails.ifscCode !== "N/A" && (
                   <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    IFSC Code: {safeBill.ifscCode}
+                    IFSC Code: {safeUser.bankDetails.ifscCode}
                   </Text>
                 )}
               </View>
@@ -408,18 +410,15 @@ const BillPDF = ({ bill = {}, user = {} }) => {
 
         <View style={styles.signatureSection}>
           <View style={styles.signatureBox}>
-            <Text style={{ fontSize: 9 }}>Receiver's Signature</Text>
+            <Text style={{ marginTop: 12 }}>For {safeBill.partyDetails.companyName || "N/A"} Authorized Signatory</Text>
           </View>
           <View style={styles.signatureBox}>
-            <Text style={{ fontSize: 9 }}>
-              Authorized Signatory ({safeUser.companyName})
-            </Text>
+            <Text style={{ marginTop: 12 }}>For {safeUser.companyName || "N/A"} Authorized Signatory</Text>
           </View>
         </View>
+
         <View style={styles.footer}>
-          <Text style={styles.subtitle}>
-            Generated on: {format(new Date(), "dd-MM-yyyy")}
-          </Text>
+          <Text>Generated by: {format(new Date(), "dd-MM-yyyy")}</Text>
         </View>
       </Page>
     </Document>
