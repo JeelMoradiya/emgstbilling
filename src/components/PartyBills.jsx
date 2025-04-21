@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Container,
   Paper,
@@ -17,12 +18,12 @@ import {
   CircularProgress,
   Box,
   TextField,
+  InputLabel,
   TablePagination,
   Grid,
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
   Snackbar,
   Alert,
   IconButton,
@@ -30,10 +31,12 @@ import {
 } from "@mui/material";
 import { ArrowBack, Add, Search, Refresh, MoreVert } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
+import logo from "../assets/logo.gif"
 
 const PartyBills = () => {
   const { partyId } = useParams();
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [bills, setBills] = useState([]);
   const [filteredBills, setFilteredBills] = useState([]);
   const [party, setParty] = useState(null);
@@ -77,10 +80,21 @@ const PartyBills = () => {
 
   useEffect(() => {
     const fetchBillsAndParty = async () => {
+      if (!currentUser) {
+        setSnackbar({
+          open: true,
+          message: "Please log in to view bills.",
+          severity: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
         const partyQuery = query(
           collection(db, "parties"),
-          where("__name__", "==", partyId)
+          where("__name__", "==", partyId),
+          where("createdBy", "==", currentUser.uid)
         );
         const partySnapshot = await getDocs(partyQuery);
         if (!partySnapshot.empty) {
@@ -88,11 +102,20 @@ const PartyBills = () => {
             id: partySnapshot.docs[0].id,
             ...partySnapshot.docs[0].data(),
           });
+        } else {
+          setSnackbar({
+            open: true,
+            message: "Party not found or you lack permission.",
+            severity: "error",
+          });
+          setLoading(false);
+          return;
         }
 
         const billsQuery = query(
           collection(db, "bills"),
-          where("partyId", "==", partyId)
+          where("partyId", "==", partyId),
+          where("createdBy", "==", currentUser.uid)
         );
         const billsSnapshot = await getDocs(billsQuery);
         const billsData = billsSnapshot.docs.map((doc) => ({
@@ -109,7 +132,7 @@ const PartyBills = () => {
         console.error("Error fetching data: ", error);
         setSnackbar({
           open: true,
-          message: "Failed to fetch bills.",
+          message: "Failed to fetch bills: " + error.message,
           severity: "error",
         });
       } finally {
@@ -118,7 +141,7 @@ const PartyBills = () => {
     };
 
     fetchBillsAndParty();
-  }, [partyId]);
+  }, [partyId, currentUser]);
 
   const applyFilters = () => {
     let filtered = [...bills];
@@ -178,7 +201,6 @@ const PartyBills = () => {
     setStatusFilter(event.target.value);
   };
 
-  // Auto-reset if all filters are cleared
   useEffect(() => {
     if (!startDate && !endDate) {
       setIsFilterApplied(false);
@@ -201,6 +223,17 @@ const PartyBills = () => {
     setSelectedBillId(null);
   };
 
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
   if (loading) {
     return (
       <Container
@@ -210,10 +243,14 @@ const PartyBills = () => {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "80vh",
+          minHeight: "50vh",
         }}
       >
-        <CircularProgress size={48} />
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
       </Container>
     );
   }
@@ -242,7 +279,7 @@ const PartyBills = () => {
             color="error"
             sx={{ fontSize: { xs: "1rem", sm: "1.25rem", md: "1.5rem" } }}
           >
-            Party not found
+            Party not found or you lack permission
           </Typography>
           <Button
             component={Link}
@@ -679,7 +716,7 @@ const PartyBills = () => {
             size="small"
             sx={{
               width: { xs: "100%", sm: "auto" },
-              height: { xs: "40px", sm: "40"},
+              height: { xs: "40px", sm: "40px" },
               fontSize: { xs: "0.75rem", sm: "0.875rem" },
             }}
           >

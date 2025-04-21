@@ -56,6 +56,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
+import logo from "../assets/logo.gif";
 
 const PartyManagement = () => {
   const theme = useTheme();
@@ -78,6 +79,7 @@ const PartyManagement = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedPartyId, setSelectedPartyId] = useState(null);
   const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
 
   const stateCities = {
     Gujarat: [
@@ -398,6 +400,44 @@ const PartyManagement = () => {
     formik.setFieldValue("city", "");
   };
 
+  // Handler to convert text input to uppercase
+  const handleUpperCaseInput = (e) => {
+    const { name, value } = e.target;
+    formik.setFieldValue(name, value.toUpperCase());
+  };
+
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
+  if (loading) {
+    return (
+      <Container
+        maxWidth="lg"
+        sx={{
+          mt: { xs: 2, sm: 3, md: 4 },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "50vh",
+        }}
+      >
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
+      </Container>
+    );
+  }
+
   return (
     <Container
       maxWidth="lg"
@@ -586,35 +626,55 @@ const PartyManagement = () => {
                       <TableRow hover>
                         <TableCell
                           sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                            fontSize: {
+                              xs: "0.8rem",
+                              sm: "0.9rem",
+                              md: "1rem",
+                            },
                           }}
                         >
                           {index + 1}
                         </TableCell>
                         <TableCell
                           sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                            fontSize: {
+                              xs: "0.8rem",
+                              sm: "0.9rem",
+                              md: "1rem",
+                            },
                           }}
                         >
                           {party.companyName || "N/A"}
                         </TableCell>
                         <TableCell
                           sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                            fontSize: {
+                              xs: "0.8rem",
+                              sm: "0.9rem",
+                              md: "1rem",
+                            },
                           }}
                         >
                           {party.gstNo || "N/A"}
                         </TableCell>
                         <TableCell
                           sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                            fontSize: {
+                              xs: "0.8rem",
+                              sm: "0.9rem",
+                              md: "1rem",
+                            },
                           }}
                         >
                           {party.mobileNo || "N/A"}
                         </TableCell>
                         <TableCell
                           sx={{
-                            fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                            fontSize: {
+                              xs: "0.8rem",
+                              sm: "0.9rem",
+                              md: "1rem",
+                            },
                           }}
                         >
                           {party.gstOwnerName || "N/A"}
@@ -635,19 +695,25 @@ const PartyManagement = () => {
                           >
                             <MenuItemAction
                               onClick={() => handleViewWithClose(party)}
-                              sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem" } }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
                             >
                               View
                             </MenuItemAction>
                             <MenuItemAction
                               onClick={() => handleEditWithClose(party)}
-                              sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem" } }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
                             >
                               Edit
                             </MenuItemAction>
                             <MenuItemAction
                               onClick={() => handleDeleteWithClose(party.id)}
-                              sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem" } }}
+                              sx={{
+                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                              }}
                             >
                               Delete
                             </MenuItemAction>
@@ -720,7 +786,7 @@ const PartyManagement = () => {
                                     sx={{
                                       fontWeight: "bold",
                                       color: "#2c3e50",
-                                      mb:1,
+                                      mb: 1,
                                       fontSize: {
                                         xs: "0.85rem",
                                         sm: "1rem",
@@ -839,9 +905,10 @@ const PartyManagement = () => {
           rowsPerPageOptions={[5, 10, 25, 50]}
           sx={{
             mt: 2,
-            "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
-              fontSize: { xs: "0.85rem", sm: "0.95rem" },
-            },
+            "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+              {
+                fontSize: { xs: "0.85rem", sm: "0.95rem" },
+              },
           }}
         />
 
@@ -860,7 +927,7 @@ const PartyManagement = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-             }}
+            }}
           >
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <Typography
@@ -903,7 +970,6 @@ const PartyManagement = () => {
           <DialogContent sx={{ mt: 2, px: { xs: 2, sm: 3 } }}>
             {dialogMode === "view" ? (
               <>
-
                 <Box sx={{ mb: 3 }}>
                   <Typography
                     variant="h6"
@@ -932,7 +998,6 @@ const PartyManagement = () => {
                         {formik.values.companyName || "N/A"}
                       </Typography>
                     </Grid>
-                    
                     <Grid item xs={12} md={6}>
                       <Typography
                         variant="subtitle2"
@@ -1026,7 +1091,7 @@ const PartyManagement = () => {
                       </Typography>
                     </Grid>
                   </Grid>
-                </Box>               
+                </Box>
 
                 <Divider sx={{ my: 2 }} />
                 <Box>
@@ -1172,7 +1237,7 @@ const PartyManagement = () => {
                         name="companyName"
                         label="Company Name"
                         value={formik.values.companyName}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.companyName &&
@@ -1191,7 +1256,6 @@ const PartyManagement = () => {
                         }}
                       />
                     </Grid>
-                    
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
@@ -1199,7 +1263,7 @@ const PartyManagement = () => {
                         name="gstNo"
                         label="GST No"
                         value={formik.values.gstNo}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.gstNo && Boolean(formik.errors.gstNo)
@@ -1246,7 +1310,7 @@ const PartyManagement = () => {
                         name="gstOwnerName"
                         label="GST Owner Name"
                         value={formik.values.gstOwnerName}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.gstOwnerName &&
@@ -1290,7 +1354,7 @@ const PartyManagement = () => {
                         name="fullName"
                         label="Full Name"
                         value={formik.values.fullName}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.fullName &&
@@ -1331,7 +1395,6 @@ const PartyManagement = () => {
                         }}
                       />
                     </Grid>
-                    
                   </Grid>
                 </Box>
 
@@ -1356,7 +1419,7 @@ const PartyManagement = () => {
                         name="plotHouseNo"
                         label="Plot/House No"
                         value={formik.values.plotHouseNo}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.plotHouseNo &&
@@ -1382,7 +1445,7 @@ const PartyManagement = () => {
                         name="line1"
                         label="Line 1"
                         value={formik.values.line1}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.line1 && Boolean(formik.errors.line1)
@@ -1404,7 +1467,7 @@ const PartyManagement = () => {
                         name="area"
                         label="Area"
                         value={formik.values.area}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.area && Boolean(formik.errors.area)
@@ -1426,7 +1489,7 @@ const PartyManagement = () => {
                         name="landmark"
                         label="Landmark"
                         value={formik.values.landmark}
-                        onChange={formik.handleChange}
+                        onChange={handleUpperCaseInput}
                         onBlur={formik.handleBlur}
                         error={
                           formik.touched.landmark &&
@@ -1456,20 +1519,25 @@ const PartyManagement = () => {
                           },
                         }}
                       >
-                        <InputLabel
-                          sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                        >
-                          State
-                        </InputLabel>
                         <Select
                           id="state"
                           name="state"
                           value={formik.values.state}
                           onChange={handleStateChange}
-                          onBlur={formik.handleBlur}
-                          label="State"
-                          variant="outlined"
+                          onBlur={() => formik.setFieldTouched("state", true)}
+                          displayEmpty
                           size="small"
+                          renderValue={(selected) => {
+                            if (!selected) {
+                              return <em>Select State *</em>;
+                            }
+                            return selected;
+                          }}
+                          sx={{
+                            "& .MuiInputBase-root": {
+                              fontSize: { xs: "0.9rem", sm: "1rem" },
+                            },
+                          }}
                         >
                           <MenuItem value="">
                             <em>Select State</em>
@@ -1496,7 +1564,9 @@ const PartyManagement = () => {
                     <Grid item xs={12} md={4}>
                       <FormControl
                         fullWidth
-                        error={formik.touched.city && Boolean(formik.errors.city)}
+                        error={
+                          formik.touched.city && Boolean(formik.errors.city)
+                        }
                         disabled={!formik.values.state}
                         sx={{
                           "& .MuiInputBase-root": {
@@ -1504,20 +1574,25 @@ const PartyManagement = () => {
                           },
                         }}
                       >
-                        <InputLabel
-                          sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                        >
-                          City
-                        </InputLabel>
                         <Select
                           id="city"
                           name="city"
                           value={formik.values.city}
                           onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                          label="City"
-                          variant="outlined"
+                          onBlur={() => formik.setFieldTouched("city", true)}
+                          displayEmpty
                           size="small"
+                          renderValue={(selected) => {
+                            if (!selected) {
+                              return <em>Select City *</em>;
+                            }
+                            return selected;
+                          }}
+                          sx={{
+                            "& .MuiInputBase-root": {
+                              fontSize: { xs: "0.9rem", sm: "1rem" },
+                            },
+                          }}
                         >
                           <MenuItem value="">
                             <em>Select City</em>
@@ -1623,7 +1698,8 @@ const PartyManagement = () => {
             <Typography
               sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" } }}
             >
-              Are you sure you want to delete this party? This action cannot be undone.
+              Are you sure you want to delete this party? This action cannot be
+              undone.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ p: { xs: 1, sm: 2 } }}>

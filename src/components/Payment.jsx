@@ -55,6 +55,7 @@ import {
   Close,
 } from "@mui/icons-material";
 import { format, parseISO } from "date-fns";
+import logo from "../assets/logo.gif"
 
 const Payment = () => {
   const { partyId } = useParams();
@@ -546,19 +547,34 @@ const Payment = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
   if (loading) {
     return (
       <Container
         maxWidth="lg"
         sx={{
-          mt: 4,
+          mt: { xs: 2, sm: 3, md: 4 },
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           minHeight: "50vh",
         }}
       >
-        <CircularProgress size={48} />
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
       </Container>
     );
   }
@@ -777,7 +793,7 @@ const Payment = () => {
             InputLabelProps={{ shrink: true }}
             size="small"
             sx={{
-              minWidth: { xs: "100%", sm: 150 },
+              minWidth: { xs: "100%", sm: 250 },
               "& .MuiInputBase-root": {
                 fontSize: { xs: "0.75rem", sm: "0.875rem" },
               },
@@ -791,7 +807,7 @@ const Payment = () => {
             InputLabelProps={{ shrink: true }}
             size="small"
             sx={{
-              minWidth: { xs: "100%", sm: 150 },
+              minWidth: { xs: "100%", sm: 250 },
               "& .MuiInputBase-root": {
                 fontSize: { xs: "0.75rem", sm: "0.875rem" },
               },
@@ -801,7 +817,6 @@ const Payment = () => {
             variant="contained"
             color="primary"
             onClick={handleSearch}
-            startIcon={<Search />}
             size="small"
             sx={{
               width: { xs: "100%", sm: "auto" },
@@ -809,7 +824,7 @@ const Payment = () => {
               fontSize: { xs: "0.75rem", sm: "0.875rem" },
             }}
           >
-            Search
+          <Search />
           </Button>
         </Box>
 

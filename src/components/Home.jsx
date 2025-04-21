@@ -32,6 +32,7 @@ import {
 import { Search } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { BarChart } from "@mui/x-charts/BarChart";
+import logo from "../assets/logo.gif"
 
 const Home = () => {
   const { currentUser } = useAuth();
@@ -284,7 +285,18 @@ const Home = () => {
       .reduce((sum, bill) => sum + (bill.total || 0), 0),
   };
 
-  if (!currentUser || loading) {
+useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
+  if (loading) {
     return (
       <Container
         maxWidth="lg"
@@ -296,7 +308,11 @@ const Home = () => {
           minHeight: "50vh",
         }}
       >
-        <CircularProgress size={48} />
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
       </Container>
     );
   }

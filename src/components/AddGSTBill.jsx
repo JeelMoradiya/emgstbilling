@@ -41,6 +41,7 @@ import {
   DialogActions,
   useMediaQuery,
   useTheme,
+  Autocomplete,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -48,6 +49,7 @@ import {
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { numberToWords } from "../utils";
+import logo from "../assets/logo.gif"
 
 const AddGSTBill = () => {
   const theme = useTheme();
@@ -62,10 +64,12 @@ const AddGSTBill = () => {
   ]);
   const [discount, setDiscount] = useState("");
   const [nextBillNo, setNextBillNo] = useState(null);
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser } = useAuth();
   const [openDialog, setOpenDialog] = useState(false);
-  const [userState, setUserState] = useState(""); 
+  const [userState, setUserState] = useState("");
   const [userGSTCode, setUserGSTCode] = useState("");
+  const [partySearchInput, setPartySearchInput] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const validationSchema = Yup.object({
     partyId: Yup.string()
@@ -131,7 +135,27 @@ const AddGSTBill = () => {
       .optional()
       .max(500, "Notes cannot exceed 500 characters"),
   });
-  
+
+  const resetComponentState = () => {
+    setItems([{ name: "", hsn: "", quantity: "", price: "" }]);
+    setDiscount("");
+    setPartySearchInput("");
+    formik.resetForm({
+      values: {
+        billNo: "",
+        challanNo: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+        partyId: "",
+        paymentMethod: "cheque",
+        gstRate: 0,
+        status: "pending",
+        notes: "",
+        items: [{ name: "", hsn: "", quantity: "", price: "" }],
+        discount: "",
+      },
+    });
+    fetchNextBillNo();
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -173,13 +197,21 @@ const AddGSTBill = () => {
           return;
         }
 
-        const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
-          calculateTotals();
+        const {
+          subtotal,
+          discountAmount,
+          taxableAmount,
+          cgst,
+          sgst,
+          igst,
+          total,
+        } = calculateTotals();
         const selectedParty = parties.find((p) => p.id === values.partyId);
         const isInterState = selectedParty.state !== userState;
 
         await addDoc(collection(db, "bills"), {
           ...values,
+          partyId: values.partyId,
           items,
           subtotal,
           discount: parseFloat(discount) || 0,
@@ -202,11 +234,10 @@ const AddGSTBill = () => {
         );
 
         setSuccess(true);
-        setItems([{ name: "", hsn: "", quantity: "", price: "" }]);
-        setDiscount("");
-        formik.resetForm();
-        formik.setFieldValue("date", format(new Date(), "yyyy-MM-dd"));
-        setNextBillNo(null);
+        setTimeout(() => {
+          setSuccess(false);
+          resetComponentState();
+        }, 2000);
       } catch (error) {
         console.error("Error generating bill: ", error);
         setError("Failed to create bill: " + error.message);
@@ -220,7 +251,6 @@ const AddGSTBill = () => {
     const fetchPartiesAndUserState = async () => {
       if (!currentUser) return;
       try {
-        // Fetch parties
         const q = query(
           collection(db, "parties"),
           where("createdBy", "==", currentUser.uid)
@@ -232,7 +262,6 @@ const AddGSTBill = () => {
         }));
         setParties(partiesData);
 
-        // Fetch user state (assuming stored in user profile)
         const userRef = doc(db, "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -246,22 +275,23 @@ const AddGSTBill = () => {
     fetchPartiesAndUserState();
   }, [currentUser]);
 
-  useEffect(() => {
-    const fetchNextBillNo = async () => {
-      if (!currentUser) return;
-      try {
-        const counterRef = doc(db, "billCounters", `${currentUser.uid}`);
-        const counterSnap = await getDoc(counterRef);
-        if (counterSnap.exists()) {
-          setNextBillNo(counterSnap.data().lastBillNo + 1);
-        } else {
-          setNextBillNo(1);
-        }
-      } catch (err) {
-        console.error("Error fetching bill counter:", err);
+  const fetchNextBillNo = async () => {
+    if (!currentUser) return;
+    try {
+      const counterRef = doc(db, "billCounters", `${currentUser.uid}`);
+      const counterSnap = await getDoc(counterRef);
+      if (counterSnap.exists()) {
+        setNextBillNo(counterSnap.data().lastBillNo + 1);
+      } else {
         setNextBillNo(1);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching bill counter:", err);
+      setNextBillNo(1);
+    }
+  };
+
+  useEffect(() => {
     fetchNextBillNo();
   }, [currentUser]);
 
@@ -276,9 +306,15 @@ const AddGSTBill = () => {
     const selectedParty = parties.find((p) => p.id === formik.values.partyId);
     const isInterState = selectedParty && selectedParty.state !== userState;
 
-    const cgst = isInterState ? 0 : taxableAmount * (formik.values.gstRate / 100 / 2);
-    const sgst = isInterState ? 0 : taxableAmount * (formik.values.gstRate / 100 / 2);
-    const igst = isInterState ? taxableAmount * (formik.values.gstRate / 100) : 0;
+    const cgst = isInterState
+      ? 0
+      : taxableAmount * (formik.values.gstRate / 100 / 2);
+    const sgst = isInterState
+      ? 0
+      : taxableAmount * (formik.values.gstRate / 100 / 2);
+    const igst = isInterState
+      ? taxableAmount * (formik.values.gstRate / 100)
+      : 0;
     const total = taxableAmount + (isInterState ? igst : cgst + sgst);
 
     return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
@@ -308,6 +344,39 @@ const AddGSTBill = () => {
 
   const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
     calculateTotals();
+
+    useEffect(() => {
+        if (loading) {
+          setLoading(true);
+          const timer = setTimeout(() => {
+            setLoading(false);
+          }, 3000); // 3 seconds
+    
+          return () => clearTimeout(timer); // Cleanup on unmount
+        }
+      }, [loading]);
+    
+      if (loading) {
+        return (
+          <Container
+            maxWidth="lg"
+            sx={{
+              mt: { xs: 2, sm: 3, md: 4 },
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "50vh",
+            }}
+          >
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: "100px", height: "100px" }}
+            />
+          </Container>
+        );
+      }
+
   return (
     <Container
       maxWidth="lg"
@@ -349,7 +418,7 @@ const AddGSTBill = () => {
               fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
             }}
           >
-            GST Invoice created successfully!
+            GST Invoice created successfully! Page will refresh...
           </Alert>
         )}
         {error && (
@@ -368,53 +437,41 @@ const AddGSTBill = () => {
         <form onSubmit={formik.handleSubmit}>
           <Grid container spacing={{ xs: 2, sm: 3 }}>
             <Grid item xs={12}>
-              <FormControl
-                fullWidth
-                error={formik.touched.partyId && Boolean(formik.errors.partyId)}
-              >
-                <InputLabel
-                  id="party-label"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                >
-                  Select Party *
-                </InputLabel>
-                <Select
-                  labelId="party-label"
-                  id="partyId"
-                  name="partyId"
-                  label="Select Party *"
-                  value={formik.values.partyId}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  variant="outlined"
-                  sx={{
-                    "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
-                    },
-                  }}
-                >
-                  <MenuItem
-                    value=""
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                  >
-                    Select a party
-                  </MenuItem>
-                  {parties.map((party) => (
-                    <MenuItem
-                      key={party.id}
-                      value={party.id}
-                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                    >
-                      {party.companyName} ({party.gstNo})
-                    </MenuItem>
-                  ))}
-                </Select>
-                {formik.touched.partyId && formik.errors.partyId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                    {formik.errors.partyId}
-                  </Typography>
+              <Autocomplete
+                id="partyId"
+                options={parties}
+                getOptionLabel={(option) =>
+                  `${option.companyName} (${option.gstNo})`
+                }
+                value={
+                  parties.find((p) => p.id === formik.values.partyId) || null
+                }
+                onChange={(event, newValue) => {
+                  formik.setFieldValue("partyId", newValue ? newValue.id : "");
+                }}
+                onBlur={() => formik.setFieldTouched("partyId", true)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Party *"
+                    size="small"
+                    error={
+                      formik.touched.partyId && Boolean(formik.errors.partyId)
+                    }
+                    helperText={formik.touched.partyId && formik.errors.partyId}
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
+                  />
                 )}
-              </FormControl>
+                sx={{
+                  "& .MuiAutocomplete-inputRoot": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  },
+                }}
+              />
             </Grid>
 
             <Grid item xs={12} sm={6} md={4}>
@@ -429,9 +486,10 @@ const AddGSTBill = () => {
                 }}
                 helperText="Auto-generated"
                 variant="outlined"
+                size="small"
                 sx={{
                   "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   },
                 }}
               />
@@ -451,9 +509,10 @@ const AddGSTBill = () => {
                 }
                 helperText={formik.touched.challanNo && formik.errors.challanNo}
                 variant="outlined"
+                size="small"
                 sx={{
                   "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   },
                 }}
               />
@@ -476,19 +535,23 @@ const AddGSTBill = () => {
                   max: new Date().toISOString().split("T")[0],
                 }}
                 variant="outlined"
+                size="small"
                 sx={{
                   "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   },
                 }}
               />
             </Grid>
 
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth>
+              <FormControl
+                fullWidth
+                error={formik.touched.status && Boolean(formik.errors.status)}
+              >
                 <InputLabel
                   id="status-label"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                  sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                 >
                   Status
                 </InputLabel>
@@ -501,21 +564,22 @@ const AddGSTBill = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
                     },
                   }}
                 >
                   <MenuItem
                     value="pending"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     Pending
                   </MenuItem>
                   <MenuItem
                     value="paid"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     Paid
                   </MenuItem>
@@ -533,7 +597,7 @@ const AddGSTBill = () => {
               >
                 <InputLabel
                   id="payment-method-label"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                  sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                 >
                   Payment Method *
                 </InputLabel>
@@ -546,33 +610,34 @@ const AddGSTBill = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
                     },
                   }}
                 >
                   <MenuItem
                     value="cheque"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     Cheque
                   </MenuItem>
                   <MenuItem
                     value="cash"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     Cash
                   </MenuItem>
                   <MenuItem
                     value="upi"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     UPI
                   </MenuItem>
                   <MenuItem
                     value="netbanking"
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     Net Banking
                   </MenuItem>
@@ -593,7 +658,7 @@ const AddGSTBill = () => {
               >
                 <InputLabel
                   id="gst-rate-label"
-                  sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                  sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                 >
                   GST Rate (%) *
                 </InputLabel>
@@ -606,39 +671,40 @@ const AddGSTBill = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   variant="outlined"
+                  size="small"
                   sx={{
                     "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
                     },
                   }}
                 >
                   <MenuItem
                     value={0}
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     0% (Exempt)
                   </MenuItem>
                   <MenuItem
                     value={5}
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     5%
                   </MenuItem>
                   <MenuItem
                     value={12}
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     12%
                   </MenuItem>
                   <MenuItem
                     value={18}
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     18%
                   </MenuItem>
                   <MenuItem
                     value={28}
-                    sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    sx={{ fontSize: { xs: "0.85rem", sm: "0.9rem" } }}
                   >
                     28%
                   </MenuItem>
@@ -787,7 +853,7 @@ const AddGSTBill = () => {
                             sx={{
                               minWidth: { xs: 100, sm: 150 },
                               "& .MuiInputBase-root": {
-                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                                fontSize: { xs: "0.85rem", sm: "0.9rem" },
                               },
                               "& .MuiFormHelperText-root": {
                                 color: "error.main",
@@ -828,7 +894,7 @@ const AddGSTBill = () => {
                             sx={{
                               minWidth: { xs: 80, sm: 120 },
                               "& .MuiInputBase-root": {
-                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                                fontSize: { xs: "0.85rem", sm: "0.9rem" },
                               },
                               "& .MuiFormHelperText-root": {
                                 color: "error.main",
@@ -875,7 +941,7 @@ const AddGSTBill = () => {
                             sx={{
                               minWidth: { xs: 60, sm: 80 },
                               "& .MuiInputBase-root": {
-                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                                fontSize: { xs: "0.85rem", sm: "0.9rem" },
                               },
                               "& .MuiFormHelperText-root": {
                                 color: "error.main",
@@ -918,7 +984,7 @@ const AddGSTBill = () => {
                             sx={{
                               minWidth: { xs: 80, sm: 100 },
                               "& .MuiInputBase-root": {
-                                fontSize: { xs: "0.9rem", sm: "1rem" },
+                                fontSize: { xs: "0.85rem", sm: "0.9rem" },
                               },
                               "& .MuiFormHelperText-root": {
                                 color: "error.main",
@@ -959,12 +1025,11 @@ const AddGSTBill = () => {
                 color="primary"
                 startIcon={<AddIcon />}
                 onClick={handleAddItem}
-                size="large"
+                size="small"
                 sx={{
                   mb: 3,
                   minWidth: { xs: "100%", sm: "160px" },
-                  height: { xs: "48px", sm: "56px" },
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   textTransform: "none",
                 }}
               >
@@ -1004,13 +1069,14 @@ const AddGSTBill = () => {
                 onBlur={formik.handleBlur}
                 placeholder="Enter discount percentage (optional)"
                 variant="outlined"
+                size="small"
                 error={
                   formik.touched.discount && Boolean(formik.errors.discount)
                 }
                 helperText={formik.touched.discount && formik.errors.discount}
                 sx={{
                   "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   },
                   "& .MuiFormHelperText-root": {
                     color: "error.main",
@@ -1032,11 +1098,12 @@ const AddGSTBill = () => {
                 rows={isMobile ? 2 : 3}
                 placeholder="Add any additional information (optional)"
                 variant="outlined"
+                size="small"
                 error={formik.touched.notes && Boolean(formik.errors.notes)}
                 helperText={formik.touched.notes && formik.errors.notes}
                 sx={{
                   "& .MuiInputBase-root": {
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                   },
                   "& .MuiFormHelperText-root": {
                     color: "error.main",
@@ -1187,15 +1254,14 @@ const AddGSTBill = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  size="large"
+                  size="small"
                   startIcon={
-                    isSubmitting ? <CircularProgress size={24} /> : <SaveIcon />
+                    isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />
                   }
                   disabled={isSubmitting || !nextBillNo}
                   sx={{
                     minWidth: { xs: "100%", sm: "160px" },
-                    height: { xs: "48px", sm: "56px" },
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
                     textTransform: "none",
                   }}
                 >
@@ -1230,11 +1296,10 @@ const AddGSTBill = () => {
             onClick={() => setOpenDialog(false)}
             variant="contained"
             color="primary"
-            size="large"
+            size="small"
             sx={{
               minWidth: { xs: "100%", sm: "160px" },
-              height: { xs: "48px", sm: "56px" },
-              fontSize: { xs: "0.9rem", sm: "1rem" },
+              fontSize: { xs: "0.85rem", sm: "0.9rem" },
               textTransform: "none",
             }}
           >

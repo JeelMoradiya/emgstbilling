@@ -824,7 +824,7 @@ const Profile = () => {
                       <option value="">Select State</option>
                       {states.map((state) => (
                         <option key={state} value={state}>
-                          {state} (GST Code: {stateCityMap[state].gstCode}, UDYAM Code: {stateCityMap[state].udyamCode})
+                          {state}
                         </option>
                       ))}
                     </TextField>

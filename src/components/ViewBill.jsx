@@ -25,7 +25,6 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -49,6 +48,7 @@ import BillPDF from "./BillPDF";
 import { numberToWords } from "../utils";
 import { useAuth } from "../contexts/AuthContext";
 import { format } from "date-fns";
+import logo from "../assets/logo.gif";
 
 const stateCities = {
   Gujarat: [
@@ -311,7 +311,7 @@ const ViewBill = () => {
     const isInterState = values.partyDetails?.state !== userState;
     const cgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
     const sgst = isInterState ? 0 : taxableAmount * (values.gstRate / 100 / 2);
-    const igst = isInterState ? 0 : taxableAmount * (values.gstRate / 100);
+    const igst = isInterState ? taxableAmount * (values.gstRate / 100) : 0;
     const total = taxableAmount + (isInterState ? igst : cgst + sgst);
     return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
   };
@@ -437,18 +437,34 @@ const ViewBill = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 5000); // 5 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
   if (loading) {
     return (
       <Container
+        maxWidth="lg"
         sx={{
-          mt: 4,
+          mt: { xs: 2, sm: 3, md: 4 },
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "80vh",
+          minHeight: "50vh",
         }}
       >
-        <CircularProgress />
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
       </Container>
     );
   }
@@ -752,7 +768,7 @@ const ViewBill = () => {
           </Grid>
         </Grid>
 
-        <Grid container spacing={3} sx={{ mb:2 }}>
+        <Grid container spacing={3} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
             <Typography
               variant="subtitle1"
@@ -899,22 +915,54 @@ const ViewBill = () => {
                   variant="outlined"
                   size="small"
                 />
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>State *</InputLabel>
+                <FormControl
+                  fullWidth
+                  error={
+                    formik.touched.partyDetails?.state &&
+                    Boolean(formik.errors.partyDetails?.state)
+                  }
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                    mb: 2,
+                  }}
+                >
                   <Select
                     name="partyDetails.state"
                     value={formik.values.partyDetails.state}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    label="State *"
-                    size="small"
-                    error={
-                      formik.touched.partyDetails?.state &&
-                      Boolean(formik.errors.partyDetails?.state)
+                    onChange={(e) => {
+                      formik.handleChange(e);
+                      formik.setFieldValue("partyDetails.city", "");
+                    }}
+                    onBlur={() =>
+                      formik.setFieldTouched("partyDetails.state", true)
                     }
+                    displayEmpty
+                    size="small"
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <em>Select State *</em>;
+                      }
+                      return selected;
+                    }}
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
                   >
+                    <MenuItem value="">
+                      <em>Select State</em>
+                    </MenuItem>
                     {Object.keys(stateCities).map((state) => (
-                      <MenuItem key={state} value={state}>
+                      <MenuItem
+                        key={state}
+                        value={state}
+                        sx={{
+                          fontSize: { xs: "0.9rem", sm: "1rem" },
+                        }}
+                      >
                         {state}
                       </MenuItem>
                     ))}
@@ -930,24 +978,53 @@ const ViewBill = () => {
                       </Typography>
                     )}
                 </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>City *</InputLabel>
+                <FormControl
+                  fullWidth
+                  error={
+                    formik.touched.partyDetails?.city &&
+                    Boolean(formik.errors.partyDetails?.city)
+                  }
+                  disabled={!formik.values.partyDetails.state}
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                    mb: 2,
+                  }}
+                >
                   <Select
                     name="partyDetails.city"
                     value={formik.values.partyDetails.city}
                     onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    label="City *"
-                    size="small"
-                    disabled={!formik.values.partyDetails.state}
-                    error={
-                      formik.touched.partyDetails?.city &&
-                      Boolean(formik.errors.partyDetails?.city)
+                    onBlur={() =>
+                      formik.setFieldTouched("partyDetails.city", true)
                     }
+                    displayEmpty
+                    size="small"
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <em>Select City *</em>;
+                      }
+                      return selected;
+                    }}
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
                   >
+                    <MenuItem value="">
+                      <em>Select City</em>
+                    </MenuItem>
                     {(stateCities[formik.values.partyDetails.state] || []).map(
                       (city) => (
-                        <MenuItem key={city} value={city}>
+                        <MenuItem
+                          key={city}
+                          value={city}
+                          sx={{
+                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                          }}
+                        >
                           {city}
                         </MenuItem>
                       )
@@ -1021,24 +1098,67 @@ const ViewBill = () => {
             </Typography>
             {isEditing ? (
               <>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Payment Method *</InputLabel>
+                <FormControl
+                  fullWidth
+                  error={
+                    formik.touched.paymentMethod &&
+                    Boolean(formik.errors.paymentMethod)
+                  }
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                    mb: 2,
+                  }}
+                >
                   <Select
                     name="paymentMethod"
                     value={formik.values.paymentMethod}
                     onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    label="Payment Method *"
+                    onBlur={() => formik.setFieldTouched("paymentMethod", true)}
+                    displayEmpty
                     size="small"
-                    error={
-                      formik.touched.paymentMethod &&
-                      Boolean(formik.errors.paymentMethod)
-                    }
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <em>Select Payment Method *</em>;
+                      }
+                      return (
+                        selected.charAt(0).toUpperCase() + selected.slice(1)
+                      );
+                    }}
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
                   >
-                    <MenuItem value="cheque">Cheque</MenuItem>
-                    <MenuItem value="cash">Cash</MenuItem>
-                    <MenuItem value="upi">UPI</MenuItem>
-                    <MenuItem value="netbanking">Net Banking</MenuItem>
+                    <MenuItem value="">
+                      <em>Select Payment Method</em>
+                    </MenuItem>
+                    <MenuItem
+                      value="cheque"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      Cheque
+                    </MenuItem>
+                    <MenuItem
+                      value="cash"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      Cash
+                    </MenuItem>
+                    <MenuItem
+                      value="upi"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      UPI
+                    </MenuItem>
+                    <MenuItem
+                      value="netbanking"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      Net Banking
+                    </MenuItem>
                   </Select>
                   {formik.touched.paymentMethod &&
                     formik.errors.paymentMethod && (
@@ -1051,18 +1171,51 @@ const ViewBill = () => {
                       </Typography>
                     )}
                 </FormControl>
-                <FormControl fullWidth>
-                  <InputLabel>Status</InputLabel>
+                <FormControl
+                  fullWidth
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                    mb: 2,
+                  }}
+                >
                   <Select
                     name="status"
                     value={formik.values.status}
                     onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    label="Status"
+                    onBlur={() => formik.setFieldTouched("status", true)}
+                    displayEmpty
                     size="small"
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <em>Select Status</em>;
+                      }
+                      return (
+                        selected.charAt(0).toUpperCase() + selected.slice(1)
+                      );
+                    }}
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
                   >
-                    <MenuItem value="paid">Paid</MenuItem>
-                    <MenuItem value="pending">Pending</MenuItem>
+                    <MenuItem value="">
+                      <em>Select Status</em>
+                    </MenuItem>
+                    <MenuItem
+                      value="paid"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      Paid
+                    </MenuItem>
+                    <MenuItem
+                      value="pending"
+                      sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                    >
+                      Pending
+                    </MenuItem>
                   </Select>
                 </FormControl>
               </>
@@ -1583,28 +1736,76 @@ const ViewBill = () => {
               </Box>
               {isEditing ? (
                 <Box sx={{ mb: 1 }}>
-                  <FormControl fullWidth>
-                    <InputLabel>GST Rate (%)</InputLabel>
+                  <FormControl
+                    fullWidth
+                    error={
+                      formik.touched.gstRate && Boolean(formik.errors.gstRate)
+                    }
+                    sx={{
+                      "& .MuiInputBase-root": {
+                        fontSize: { xs: "0.9rem", sm: "1rem" },
+                      },
+                    }}
+                  >
                     <Select
                       name="gstRate"
                       value={formik.values.gstRate}
                       onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      label="GST Rate (%)"
+                      onBlur={() => formik.setFieldTouched("gstRate", true)}
+                      displayEmpty
                       size="small"
-                      error={
-                        formik.touched.gstRate && Boolean(formik.errors.gstRate)
-                      }
+                      renderValue={(selected) => {
+                        if (selected === "" || selected === null) {
+                          return <em>Select GST Rate *</em>;
+                        }
+                        return `${selected}%${
+                          selected === 0 ? " (Exempt)" : ""
+                        }`;
+                      }}
+                      sx={{
+                        "& .MuiInputBase-root": {
+                          fontSize: { xs: "0.9rem", sm: "1rem" },
+                        },
+                      }}
                     >
-                      <MenuItem value={0}>0% (Exempt)</MenuItem>
-                      <MenuItem value={5}>5%</MenuItem>
-                      <MenuItem value={12}>12%</MenuItem>
-                      <MenuItem value={18}>18%</MenuItem>
-                      <MenuItem value={28}>28%</MenuItem>
+                      <MenuItem value="">
+                        <em>Select GST Rate</em>
+                      </MenuItem>
+                      <MenuItem
+                        value={0}
+                        sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                      >
+                        0% (Exempt)
+                      </MenuItem>
+                      <MenuItem
+                        value={5}
+                        sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                      >
+                        5%
+                      </MenuItem>
+                      <MenuItem
+                        value={12}
+                        sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                      >
+                        12%
+                      </MenuItem>
+                      <MenuItem
+                        value={18}
+                        sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                      >
+                        18%
+                      </MenuItem>
+                      <MenuItem
+                        value={28}
+                        sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                      >
+                        28%
+                      </MenuItem>
                     </Select>
                     {formik.touched.gstRate && formik.errors.gstRate && (
                       <Typography
-                        variant="caption"
+                        variant="captionl"
+                        action="bottom"
                         color="error"
                         sx={{ mt: 1 }}
                       >
@@ -1680,14 +1881,14 @@ const ViewBill = () => {
                   >
                     <strong>₹{total.toFixed(2)}</strong>
                   </Typography>
-                  <Typography
-                    variant="body1"
-                    gutterBottom
-                    sx={{ mt: 2, fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                  >
-                    <strong>Amount in Words:</strong> {numberToWords(total)}
-                  </Typography>
                 </Grid>
+                <Typography
+                  variant="body1"
+                  gutterBottom
+                  sx={{ mt: 2, fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                >
+                  <strong>Amount in Words:</strong> {numberToWords(total)}
+                </Typography>
               </Box>
             </Paper>
           </Grid>

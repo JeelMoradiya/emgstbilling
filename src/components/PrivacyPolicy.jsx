@@ -1,8 +1,42 @@
 import { Container, Typography, Box, useMediaQuery } from '@mui/material';
 import { motion } from 'framer-motion';
+import logo from "../assets/logo.gif"
 
 const PrivacyPolicy = () => {
   const isMobile = useMediaQuery('(max-width:600px)');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
+  if (loading) {
+    return (
+      <Container
+        maxWidth="lg"
+        sx={{
+          mt: { xs: 2, sm: 3, md: 4 },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "50vh",
+        }}
+      >
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
+      </Container>
+    );
+  }
 
   return (
     <Container sx={{ py: isMobile ? 2 : 4, minHeight: '100vh', maxWidth: 'lg', bgcolor: 'white' }}>

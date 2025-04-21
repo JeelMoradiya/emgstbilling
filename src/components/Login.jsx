@@ -1,39 +1,39 @@
-import { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Box, 
-  Typography, 
-  TextField, 
-  Button, 
-  IconButton, 
-  InputAdornment, 
-  Link, 
-  Card, 
+import { useState } from "react";
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  IconButton,
+  InputAdornment,
+  Link,
+  Card,
   CardContent,
   FormControlLabel,
   Checkbox,
-  useMediaQuery
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
-import { Formik, Form } from 'formik';
-import * as Yup from 'yup';
-import { useAuth } from '../contexts/AuthContext';
-import Cookies from 'js-cookie';
+  useMediaQuery,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { toast } from "react-toastify";
+import { motion } from "framer-motion";
+import { Formik, Form } from "formik";
+import * as Yup from "yup";
+import { useAuth } from "../contexts/AuthContext";
+import logo from "../assets/weblogo.png";
 
 const LoginSchema = Yup.object().shape({
   email: Yup.string()
-    .required('Email or Mobile is required')
-    .test('emailOrMobile', 'Invalid email or mobile number', (value) => {
+    .required("Email or Mobile is required")
+    .test("emailOrMobile", "Invalid email or mobile number", (value) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const mobileRegex = /^[0-9]{10}$/;
       return emailRegex.test(value) || mobileRegex.test(value);
     }),
   password: Yup.string()
-    .min(8, 'Password must be at least 8 characters')
-    .required('Password is required'),
+    .min(8, "Password must be at least 8 characters")
+    .required("Password is required"),
 });
 
 const Login = () => {
@@ -41,46 +41,13 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  const isMobile = useMediaQuery('(max-width:600px)');
-
-  const getInitialValues = () => {
-    const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
-                      JSON.parse(Cookies.get('loginData') || '{}');
-    return {
-      email: storedData.email || '',
-      password: storedData.password || '',
-    };
-  };
-
-  useEffect(() => {
-    const storedData = JSON.parse(localStorage.getItem('loginData') || '{}') || 
-                      JSON.parse(Cookies.get('loginData') || '{}');
-    if (storedData.rememberMe && storedData.timestamp) {
-      const oneHourInMs = 1 * 60 * 60 * 1000;
-      if (Date.now() - storedData.timestamp < oneHourInMs) {
-        setRememberMe(true);
-      }
-    }
-  }, []);
+  const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      await login(values.email, values.password);
-      if (rememberMe) {
-        const loginData = { 
-          email: values.email,
-          password: values.password,
-          timestamp: Date.now(),
-          rememberMe: true 
-        };
-        localStorage.setItem('loginData', JSON.stringify(loginData));
-        Cookies.set('loginData', JSON.stringify(loginData), { expires: 1 });
-      } else {
-        localStorage.removeItem('loginData');
-        Cookies.remove('loginData');
-      }
-      toast.success('Login successful!', { autoClose: 2000 });
-      setTimeout(() => navigate('/'), 2000);
+      await login(values.email, values.password, rememberMe);
+      toast.success("Login successful!", { autoClose: 2000 });
+      setTimeout(() => navigate("/home"), 2000);
     } catch (error) {
       toast.error(`Login failed: ${error.message}`, { autoClose: 3000 });
     }
@@ -90,40 +57,58 @@ const Login = () => {
   return (
     <Container
       sx={{
-        minWidth: '100vw',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f5f7fa',
+        minWidth: "100vw",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: `linear-gradient(rgba(245, 247, 250, 0.8), rgba(245, 247, 250, 0.8)), url(${logo}) no-repeat left center/cover`,
+        backgroundSize: "45%",
+        position: "relative",
         m: 0,
-        p: 0
+        p: 0,
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(245, 247, 250, 0.5)",
+          zIndex: 1,
+        },
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        style={{ width: '100%', maxWidth: isMobile ? '90%' : '400px' }}
+        style={{
+          width: "100%",
+          maxWidth: isMobile ? "90%" : "400px",
+          zIndex: 2,
+        }}
       >
         <Card
           sx={{
-            width: '100%',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+            width: "100%",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
             borderRadius: 2,
-            bgcolor: 'white',
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255, 255, 255, 0.3)",
           }}
         >
           <CardContent sx={{ p: isMobile ? 3 : 4 }}>
             <Typography
-              variant={isMobile ? 'h5' : 'h4'}
-              align='center'
-              sx={{ mb: 3, fontWeight: 'bold', color: '#2c3e50' }}
+              variant={isMobile ? "h5" : "h4"}
+              align="left"
+              sx={{ mb: 2, fontWeight: "bold", color: "#2c3e50" }}
             >
-              Login
+              Sign In
             </Typography>
             <Formik
-              initialValues={getInitialValues()}
+              initialValues={{ email: "", password: "" }}
               validationSchema={LoginSchema}
               onSubmit={handleSubmit}
             >
@@ -138,96 +123,104 @@ const Login = () => {
                 <Form>
                   <TextField
                     fullWidth
-                    margin='normal'
-                    name='email'
-                    label='Email or Mobile'
+                    margin="normal"
+                    name="email"
+                    label="Email or Mobile"
                     value={values.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.email && Boolean(errors.email)}
                     helperText={touched.email && errors.email}
-                    variant='outlined'
-                    sx={{ mb: 2, '& .MuiInputLabel-root': { color: '#2c3e50' } }}
+                    variant="outlined"
+                    sx={{
+                      mb: 2,
+                      "& .MuiInputLabel-root": { color: "#2c3e50" },
+                    }}
                   />
                   <TextField
                     fullWidth
-                    margin='normal'
-                    name='password'
-                    label='Password'
-                    type={showPassword ? 'text' : 'password'}
+                    margin="normal"
+                    name="password"
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
                     value={values.password}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={touched.password && Boolean(errors.password)}
                     helperText={touched.password && errors.password}
-                    variant='outlined'
+                    variant="outlined"
                     InputProps={{
                       endAdornment: (
-                        <InputAdornment position='end'>
+                        <InputAdornment position="end">
                           <IconButton
                             onClick={() => setShowPassword(!showPassword)}
-                            edge='end'
+                            edge="end"
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
                         </InputAdornment>
                       ),
                     }}
-                    sx={{ mb: 2, '& .MuiInputLabel-root': { color: '#2c3e50' } }}
+                    sx={{
+                      mb: 2,
+                      "& .MuiInputLabel-root": { color: "#2c3e50" },
+                    }}
                   />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        sx={{ color: '#2c3e50' }}
-                      />
-                    }
-                    label='Remember Me'
-                    sx={{ mb: 2, color: '#2c3e50' }}
-                  />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 2,
+                      flexDirection: isMobile ? "column" : "row",
+                      gap: isMobile ? 1 : 0,
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          sx={{ color: "#2c3e50" }}
+                        />
+                      }
+                      label="Remember Me"
+                      sx={{ color: "#2c3e50" }}
+                    />
+                    <Link
+                      component={RouterLink}
+                      to="/forgot-password"
+                      variant="body2"
+                      sx={{ color: "#2c3e50" }}
+                    >
+                      Forgot Password?
+                    </Link>
+                  </Box>
                   <Button
-                    type='submit'
+                    type="submit"
                     fullWidth
-                    variant='contained'
+                    variant="contained"
                     disabled={isSubmitting}
                     sx={{
                       py: 1.5,
                       borderRadius: 1,
-                      bgcolor: '#2c3e50',
-                      color: 'white',
-                      '&:hover': { bgcolor: '#34495e' },
-                      fontSize: isMobile ? '0.9rem' : '1rem',
+                      bgcolor: "#2c3e50",
+                      color: "white",
+                      "&:hover": { bgcolor: "#34495e" },
+                      fontSize: isMobile ? "0.9rem" : "1rem",
                     }}
                   >
-                    {isSubmitting ? 'Logging in...' : 'Login'}
+                    {isSubmitting ? "Logging in..." : "Login"}
                   </Button>
-                  <Box
-                    sx={{
-                      mt: 2,
-                      display: 'flex',
-                      flexDirection: isMobile ? 'column' : 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: isMobile ? 1 : 0,
-                      color: '#2c3e50',
-                    }}
-                  >
+                  <Box sx={{ mt: 2, textAlign: "center" }}>
+                    Don’t have an account?{" "}
                     <Link
                       component={RouterLink}
-                      to='/forgot-password'
-                      variant='body2'
-                      sx={{ color: '#2c3e50' }}
+                      to="/register"
+                      variant="body2"
+                      sx={{ color: "#2c3e50" }}
                     >
-                      Forgot Password?
-                    </Link>
-                    <Link
-                      component={RouterLink}
-                      to='/register'
-                      variant='body2'
-                      sx={{ color: '#2c3e50' }}
-                    >
-                      Create Account
+                      Create One Now!
                     </Link>
                   </Box>
                 </Form>

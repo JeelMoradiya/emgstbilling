@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
-  Typography,
+  Typography, // Re-added Typography import
   Button,
   Container,
   Avatar,
@@ -34,6 +34,7 @@ import {
   PersonAdd,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
+import logo from "../assets/logo.png";
 
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -123,14 +124,25 @@ const Navbar = () => {
                 }}
               >
                 <Box
-                  sx={{ px: 2, py: 1, display: "flex", alignItems: "center" }}
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 700, flexGrow: 1 }}
-                  >
-                    Hisab Setu
-                  </Typography>
+                  <RouterLink to="/">
+                    <img
+                      src={logo}
+                      alt="Hisab Setu Logo"
+                      style={{
+                        maxWidth: isMobile ? "120px" : "150px",
+                        height: "auto",
+                        flexGrow: 1,
+                      }}
+                    />
+                  </RouterLink>
                   <IconButton
                     color="inherit"
                     onClick={handleDrawerToggle}
@@ -326,20 +338,17 @@ const Navbar = () => {
                 width: "100%",
               }}
             >
-              <Typography
-                variant="h6"
-                component={RouterLink}
-                to="/"
-                sx={{
-                  textDecoration: "none",
-                  color: "#ecf0f1",
-                  fontWeight: 700,
-                  fontSize: "1.5rem",
-                  mr: 2,
-                }}
-              >
-                Hisab Setu
-              </Typography>
+              <RouterLink to="/">
+                <img
+                  src={logo}
+                  alt="Hisab Setu Logo"
+                  style={{
+                    maxWidth: isMobile ? "120px" : "150px",
+                    height: "auto",
+                    marginRight: "16px",
+                  }}
+                />
+              </RouterLink>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {navItems.map((item) => (

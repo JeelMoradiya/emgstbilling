@@ -14,7 +14,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
   Box,
   Alert,
   TextField,
@@ -27,6 +26,7 @@ import {
   Search,
   MoreVert,
 } from "@mui/icons-material";
+import logo from "../assets/logo.gif"
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);
@@ -129,6 +129,17 @@ const AllParties = () => {
     setSelectedPartyId(null);
   };
 
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
   if (loading) {
     return (
       <Container
@@ -141,7 +152,11 @@ const AllParties = () => {
           minHeight: "50vh",
         }}
       >
-        <CircularProgress size={48} />
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
       </Container>
     );
   }
