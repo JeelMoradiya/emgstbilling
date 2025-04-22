@@ -100,7 +100,7 @@ const Settings = () => {
       setLoading(true);
       const timer = setTimeout(() => {
         setLoading(false);
-      }, 5000); // 5 seconds
+      }, 3000); // 3 seconds
 
       return () => clearTimeout(timer); // Cleanup on unmount
     }

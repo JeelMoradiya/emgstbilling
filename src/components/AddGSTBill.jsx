@@ -49,7 +49,7 @@ import {
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { numberToWords } from "../utils";
-import logo from "../assets/logo.gif"
+import logo from "../assets/logo.gif";
 
 const AddGSTBill = () => {
   const theme = useTheme();
@@ -87,9 +87,8 @@ const AddGSTBill = () => {
       .max(new Date(), "Date cannot be in the future")
       .typeError("Invalid date format"),
     challanNo: Yup.string()
-      .required("Challan number is required")
-      .matches(/^[0-9-]{1,20}$/, "Invalid challan number format")
-      .max(20, "Challan number cannot exceed 20 characters"),
+      .matches(/^[0-9-]{1,20}$/, "Invalid party challan number format")
+      .max(20, "Party Challan number cannot exceed 20 characters"),
     items: Yup.array()
       .of(
         Yup.object({
@@ -205,6 +204,8 @@ const AddGSTBill = () => {
           sgst,
           igst,
           total,
+          roundedTotal,
+          roundOff,
         } = calculateTotals();
         const selectedParty = parties.find((p) => p.id === values.partyId);
         const isInterState = selectedParty.state !== userState;
@@ -221,6 +222,8 @@ const AddGSTBill = () => {
           sgst: isInterState ? 0 : sgst,
           igst: isInterState ? igst : 0,
           total,
+          roundedTotal,
+          roundOff,
           partyDetails: selectedParty,
           createdAt: new Date().toISOString(),
           createdBy: currentUser.uid,
@@ -316,8 +319,20 @@ const AddGSTBill = () => {
       ? taxableAmount * (formik.values.gstRate / 100)
       : 0;
     const total = taxableAmount + (isInterState ? igst : cgst + sgst);
+    const roundedTotal = Number(Math.round(total)).toFixed(2); // Round to nearest integer
+    const roundOff = Number(roundedTotal - total).toFixed(2); // Difference for rounding
 
-    return { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total };
+    return {
+      subtotal,
+      discountAmount,
+      taxableAmount,
+      cgst,
+      sgst,
+      igst,
+      total,
+      roundedTotal,
+      roundOff,
+    };
   };
 
   const handleAddItem = () => {
@@ -342,40 +357,49 @@ const AddGSTBill = () => {
     formik.setFieldValue("items", newItems);
   };
 
-  const { subtotal, discountAmount, taxableAmount, cgst, sgst, igst, total } =
-    calculateTotals();
+  const {
+    subtotal,
+    discountAmount,
+    taxableAmount,
+    cgst,
+    sgst,
+    igst,
+    total,
+    roundedTotal,
+    roundOff,
+  } = calculateTotals();
 
-    useEffect(() => {
-        if (loading) {
-          setLoading(true);
-          const timer = setTimeout(() => {
-            setLoading(false);
-          }, 3000); // 3 seconds
-    
-          return () => clearTimeout(timer); // Cleanup on unmount
-        }
-      }, [loading]);
-    
-      if (loading) {
-        return (
-          <Container
-            maxWidth="lg"
-            sx={{
-              mt: { xs: 2, sm: 3, md: 4 },
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "50vh",
-            }}
-          >
-            <img
-              src={logo}
-              alt="Logo"
-              style={{ width: "100px", height: "100px" }}
-            />
-          </Container>
-        );
-      }
+  useEffect(() => {
+    if (loading) {
+      setLoading(true);
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup on unmount
+    }
+  }, [loading]);
+
+  if (loading) {
+    return (
+      <Container
+        maxWidth="lg"
+        sx={{
+          mt: { xs: 2, sm: 3, md: 4 },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "50vh",
+        }}
+      >
+        <img
+          src={logo}
+          alt="Logo"
+          style={{ width: "100px", height: "100px" }}
+        />
+      </Container>
+    );
+  }
 
   return (
     <Container
@@ -500,7 +524,7 @@ const AddGSTBill = () => {
                 fullWidth
                 id="challanNo"
                 name="challanNo"
-                label="Challan No *"
+                label="Party Challan No *"
                 value={formik.values.challanNo}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
@@ -1207,6 +1231,15 @@ const AddGSTBill = () => {
                       </Typography>
                     )}
                     <Typography
+                      variant="body1"
+                      gutterBottom
+                      sx={{
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                      }}
+                    >
+                      <strong>Round Off:</strong> ₹{Math.abs(roundOff).toFixed(2)}
+                    </Typography>
+                    <Typography
                       variant="h6"
                       sx={{
                         mt: 2,
@@ -1218,7 +1251,7 @@ const AddGSTBill = () => {
                         },
                       }}
                     >
-                      <strong>Total Amount:</strong> ₹{total.toFixed(2)}
+                      <strong>Total Amount:</strong> ₹{roundedTotal}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -1235,7 +1268,8 @@ const AddGSTBill = () => {
                         wordBreak: "break-word",
                       }}
                     >
-                      <strong>Amount in Words:</strong> {numberToWords(total)}
+                      <strong>Amount in Words:</strong>{" "}
+                      {numberToWords(parseFloat(roundedTotal))}
                     </Typography>
                   </Grid>
                 </Grid>

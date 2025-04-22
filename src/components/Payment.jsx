@@ -768,7 +768,10 @@ const Payment = () => {
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 1 }}
               >
                 <strong>
-                  {((summary.totalBrokerage / summary.total) * 100 || 0).toFixed(2)}%
+                  {(
+                    (summary.totalBrokerage / summary.total) * 100 || 0
+                  ).toFixed(2)}
+                  %
                 </strong>
               </Typography>
             </Box>
@@ -824,7 +827,7 @@ const Payment = () => {
               fontSize: { xs: "0.75rem", sm: "0.875rem" },
             }}
           >
-          <Search />
+            <Search />
           </Button>
         </Box>
 
@@ -893,6 +896,14 @@ const Payment = () => {
                     fontWeight: "bold",
                     fontSize: { xs: "0.75rem", sm: "0.875rem" },
                   }}
+                >
+                  Brokerage Amount
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: "bold",
+                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                  }}
                 ></TableCell>
               </TableRow>
               <TableRow sx={{ backgroundColor: "primary.light" }}>
@@ -935,6 +946,7 @@ const Payment = () => {
                 >
                   Amount
                 </TableCell>
+                <TableCell></TableCell>
                 <TableCell></TableCell>
                 <TableCell></TableCell>
               </TableRow>
@@ -982,7 +994,8 @@ const Payment = () => {
                           textAlign: "center",
                         }}
                       >
-                        ₹{(Number(bill.paymentDetails?.tdsAmount) || 0).toFixed(
+                        ₹
+                        {(Number(bill.paymentDetails?.tdsAmount) || 0).toFixed(
                           2
                         )}
                       </TableCell>
@@ -1002,7 +1015,8 @@ const Payment = () => {
                           textAlign: "center",
                         }}
                       >
-                        ₹{(Number(bill.paymentDetails?.otherClaim) || 0).toFixed(
+                        ₹
+                        {(Number(bill.paymentDetails?.otherClaim) || 0).toFixed(
                           2
                         )}
                       </TableCell>
@@ -1016,6 +1030,10 @@ const Payment = () => {
                             fontSize: { xs: "0.75rem", sm: "0.875rem" },
                           }}
                         />
+                      </TableCell>
+                      <TableCell>
+                        ₹
+                        {Number(bill.paymentDetails?.brokerageAmount || 0).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <IconButton
@@ -1041,44 +1059,46 @@ const Payment = () => {
                             >
                               Pay
                             </MenuItem>
-                          ) : [
-                            <MenuItem
-                              key="view"
-                              onClick={() => {
-                                handleOpenDialog(bill, "view");
-                                handleMenuClose();
-                              }}
-                              sx={{
-                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                              }}
-                            >
-                              View
-                            </MenuItem>,
-                            <MenuItem
-                              key="edit"
-                              onClick={() => {
-                                handleOpenDialog(bill, "edit");
-                                handleMenuClose();
-                              }}
-                              sx={{
-                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                              }}
-                            >
-                              Edit
-                            </MenuItem>,
-                            <MenuItem
-                              key="delete"
-                              onClick={() => {
-                                handleDelete(bill.id);
-                                handleMenuClose();
-                              }}
-                              sx={{
-                                fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                              }}
-                            >
-                              Delete
-                            </MenuItem>,
-                          ]}
+                          ) : (
+                            [
+                              <MenuItem
+                                key="view"
+                                onClick={() => {
+                                  handleOpenDialog(bill, "view");
+                                  handleMenuClose();
+                                }}
+                                sx={{
+                                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                                }}
+                              >
+                                View
+                              </MenuItem>,
+                              <MenuItem
+                                key="edit"
+                                onClick={() => {
+                                  handleOpenDialog(bill, "edit");
+                                  handleMenuClose();
+                                }}
+                                sx={{
+                                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                                }}
+                              >
+                                Edit
+                              </MenuItem>,
+                              <MenuItem
+                                key="delete"
+                                onClick={() => {
+                                  handleDelete(bill.id);
+                                  handleMenuClose();
+                                }}
+                                sx={{
+                                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                                }}
+                              >
+                                Delete
+                              </MenuItem>,
+                            ]
+                          )}
                         </Menu>
                       </TableCell>
                     </TableRow>
@@ -1195,7 +1215,10 @@ const Payment = () => {
                         <Typography
                           variant="subtitle2"
                           color="text.secondary"
-                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" },mb: 0.5 }}
+                          sx={{
+                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            mb: 0.5,
+                          }}
                         >
                           Payment Method
                         </Typography>
@@ -1788,7 +1811,9 @@ const Payment = () => {
                           variant="body1"
                           sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
                         >
-                          {(Number(formik.values.otherClaimPercentage) || 0).toFixed(2)}
+                          {(
+                            Number(formik.values.otherClaimPercentage) || 0
+                          ).toFixed(2)}
                         </Typography>
                       </>
                     ) : (
@@ -1994,7 +2019,10 @@ const Payment = () => {
                           variant="body1"
                           sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
                         >
-                          ₹{(Number(formik.values.taxableAmount) || 0).toFixed(2)}
+                          ₹
+                          {(Number(formik.values.taxableAmount) || 0).toFixed(
+                            2
+                          )}
                         </Typography>
                       </>
                     ) : (
@@ -2037,7 +2065,9 @@ const Payment = () => {
                         <Typography
                           sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
                         >
-                          {(Number(formik.values.brokeragePercentage) || 0).toFixed(2)}
+                          {(
+                            Number(formik.values.brokeragePercentage) || 0
+                          ).toFixed(2)}
                         </Typography>
                       </>
                     ) : (
@@ -2169,8 +2199,8 @@ const Payment = () => {
             <Typography
               sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" } }}
             >
-              Are you sure you want to delete this payment? This action cannot be
-              undone.
+              Are you sure you want to delete this payment? This action cannot
+              be undone.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ p: { xs: 1, sm: 2 } }}>

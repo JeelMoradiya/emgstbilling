@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Container, Typography, Box, useMediaQuery } from '@mui/material';
 import { motion } from 'framer-motion';
 import logo from "../assets/logo.gif"

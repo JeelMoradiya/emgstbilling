@@ -1,4 +1,4 @@
-import { Page, Text, View, Document, StyleSheet } from "@react-pdf/renderer";
+import { Page, Text, View, Document, StyleSheet, Image } from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { numberToWords } from "../utils";
 
@@ -154,13 +154,51 @@ const styles = StyleSheet.create({
     bottom: 10,
     left: 35,
     right: 35,
-    textAlign: "right",
     fontSize: 9,
     color: "#666666",
     borderTop: "2px solid #2c3e50",
     paddingTop: 5,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  termsSection: {
+    width: "60%",
+    textAlign: "left",
+  },
+  qrCode: {
+    width: 50,
+    height: 50,
+    alignSelf: "flex-end",
   },
 });
+
+// Function to calculate bill values, including roundOff
+const calculateBillValues = (bill) => {
+  // Ensure all amounts are numbers
+  const subtotal = parseFloat(bill.subtotal) || 0;
+  const discountAmount = parseFloat(bill.discountAmount) || 0;
+  const taxableAmount = parseFloat(bill.taxableAmount) || 0;
+  const cgst = parseFloat(bill.cgst) || 0;
+  const sgst = parseFloat(bill.sgst) || 0;
+  const igst = parseFloat(bill.igst) || 0;
+
+  // Calculate total before rounding
+  const total = taxableAmount + cgst + sgst + igst;
+
+  // Round to the nearest whole number
+  const roundedTotal = Math.round(total);
+
+  // Calculate roundOff
+  const roundOff = roundedTotal - total;
+
+  return {
+    ...bill,
+    total: total.toFixed(2), // Ensure 2 decimal places
+    roundedTotal: roundedTotal.toFixed(2), // Ensure 2 decimal places
+    roundOff: roundOff.toFixed(2), // Ensure 2 decimal places
+  };
+};
 
 const formatAddress = (address) => {
   if (!address || typeof address !== "object") return "N/A";
@@ -171,24 +209,29 @@ const formatAddress = (address) => {
 };
 
 const BillPDF = ({ bill = {}, user = {} }) => {
+  // Calculate correct bill values
+  const calculatedBill = calculateBillValues(bill);
+
   const safeBill = {
-    billNo: bill.billNo || "N/A",
-    challanNo: bill.challanNo || "N/A",
-    date: bill.date || new Date(),
-    partyDetails: bill.partyDetails || {},
-    paymentMethod: bill.paymentMethod || "N/A",
-    status: bill.status || "N/A",
-    items: bill.items || [],
-    subtotal: bill.subtotal || 0,
-    discount: bill.discount || 0,
-    discountAmount: bill.discountAmount || 0,
-    taxableAmount: bill.taxableAmount || 0,
-    gstRate: bill.gstRate || 0,
-    cgst: bill.cgst || 0,
-    sgst: bill.sgst || 0,
-    igst: bill.igst || 0,
-    total: bill.total || 0,
-    notes: bill.notes || "",
+    billNo: calculatedBill.billNo || "N/A",
+    challanNo: calculatedBill.challanNo || "N/A",
+    date: calculatedBill.date || new Date(),
+    partyDetails: calculatedBill.partyDetails || {},
+    paymentMethod: calculatedBill.paymentMethod || "N/A",
+    status: calculatedBill.status || "N/A",
+    items: calculatedBill.items || [],
+    subtotal: parseFloat(calculatedBill.subtotal) || 0,
+    discount: parseFloat(calculatedBill.discount) || 0,
+    discountAmount: parseFloat(calculatedBill.discountAmount) || 0,
+    taxableAmount: parseFloat(calculatedBill.taxableAmount) || 0,
+    gstRate: parseFloat(calculatedBill.gstRate) || 0,
+    cgst: parseFloat(calculatedBill.cgst) || 0,
+    sgst: parseFloat(calculatedBill.sgst) || 0,
+    igst: parseFloat(calculatedBill.igst) || 0,
+    total: parseFloat(calculatedBill.total) || 0,
+    roundedTotal: parseFloat(calculatedBill.roundedTotal) || calculatedBill.total || 0,
+    roundOff: parseFloat(calculatedBill.roundOff) || 0,
+    notes: calculatedBill.notes || "",
   };
 
   const safeUser = {
@@ -203,6 +246,9 @@ const BillPDF = ({ bill = {}, user = {} }) => {
       ifscCode: user.bankDetails?.ifscCode || "N/A",
     },
   };
+
+  // Placeholder QR code URL (replace with actual QR code generation logic if available)
+  const qrCodeUrl = "https://via.placeholder.com/50?text=QR"; // Example placeholder
 
   return (
     <Document>
@@ -363,7 +409,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
               Amount in Words:
             </Text>
             <Text style={{ fontSize: 12, marginTop: 5 }}>
-              {numberToWords(safeBill.total)}
+              {numberToWords(parseFloat(safeBill.roundedTotal))}
             </Text>
           </View>
           <View style={styles.amountBox}>
@@ -397,12 +443,20 @@ const BillPDF = ({ bill = {}, user = {} }) => {
                 <Text>{safeBill.igst.toFixed(2)}</Text>
               </View>
             )}
+            <View style={styles.row}>
+              <Text>Round Off:</Text>
+              <Text>
+                {isNaN(safeBill.roundOff) || safeBill.roundOff === 0
+                  ? "0.00"
+                  : Math.abs(safeBill.roundOff).toFixed(2)}
+              </Text>
+            </View>
             <View style={styles.totalRow}>
               <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
                 Total:
               </Text>
               <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                {safeBill.total.toFixed(2)}
+                {safeBill.roundedTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -410,15 +464,39 @@ const BillPDF = ({ bill = {}, user = {} }) => {
 
         <View style={styles.signatureSection}>
           <View style={styles.signatureBox}>
-            <Text style={{ marginTop: 12 }}>For {safeBill.partyDetails.companyName || "N/A"} Authorized Signatory</Text>
+            <Text style={{ marginTop: 12 }}>Receiver's Signature</Text>
           </View>
           <View style={styles.signatureBox}>
-            <Text style={{ marginTop: 12 }}>For {safeUser.companyName || "N/A"} Authorized Signatory</Text>
+            <Text style={{ marginTop: 12 }}>
+              For {safeUser.companyName || "N/A"} Authorized Signatory
+            </Text>
           </View>
         </View>
 
         <View style={styles.footer}>
-          <Text>Generated by: {format(new Date(), "dd-MM-yyyy")}</Text>
+          <View style={styles.termsSection}>
+            <Text style={{ fontWeight: "bold", color: "#2c3e50", marginBottom: 5 }}>
+              Terms & Conditions:
+            </Text>
+            <Text style={{ fontSize: 8, marginBottom: 2 }}>
+              1) Payment to be made A/c Payee's Cheque only.
+            </Text>
+            <Text style={{ fontSize: 8, marginBottom: 2 }}>
+              2) We are not responsible for any loss during transit.
+            </Text>
+            <Text style={{ fontSize: 8, marginBottom: 2 }}>
+              3) Interest @ 18% p.a will be charged on amount remaining unpaid from the due date.
+            </Text>
+            <Text style={{ fontSize: 8 }}>
+              4) Subject to Surat jurisdiction.
+            </Text>
+          </View>
+          <View>
+            <Text style={{ textAlign: "right", marginBottom: 5 }}>
+              Generated by: {format(new Date(), "dd-MM-yyyy")}
+            </Text>
+            <Image src={qrCodeUrl} style={styles.qrCode} />
+          </View>
         </View>
       </Page>
     </Document>
