@@ -55,7 +55,7 @@ import {
   Close,
 } from "@mui/icons-material";
 import { format, parseISO } from "date-fns";
-import logo from "../assets/logo.gif"
+import logo from "../assets/logo.gif";
 
 const Payment = () => {
   const { partyId } = useParams();
@@ -93,7 +93,9 @@ const Payment = () => {
   });
 
   const validationSchema = Yup.object({
-    paymentMethod: Yup.string().required("Payment method is required"),
+    paymentMethod: Yup.string()
+      .required("Payment method is required")
+      .oneOf(["cheque", "cash", "upi", "netbanking"], "Invalid payment method"),
     chequeNo: Yup.string().when("paymentMethod", {
       is: "cheque",
       then: () =>
@@ -1227,10 +1229,7 @@ const Payment = () => {
                           sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
                         >
                           {formik.values.paymentMethod
-                            ? formik.values.paymentMethod
-                                .charAt(0)
-                                .toUpperCase() +
-                              formik.values.paymentMethod.slice(1)
+                            ? formik.values.paymentMethod.toUpperCase()
                             : "N/A"}
                         </Typography>
                       </>
@@ -1311,7 +1310,9 @@ const Payment = () => {
                         <Typography
                           variant="subtitle2"
                           color="text.secondary"
-                          sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                          sx={{
+                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                          }}
                         >
                           Amount
                         </Typography>

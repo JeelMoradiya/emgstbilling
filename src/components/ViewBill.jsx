@@ -75,7 +75,13 @@ const stateCities = {
     "Amravati",
     "Navi Mumbai",
   ],
-  Delhi: ["New Delhi", "South Delhi", "North Delhi", "East Delhi", "West Delhi"],
+  Delhi: [
+    "New Delhi",
+    "South Delhi",
+    "North Delhi",
+    "East Delhi",
+    "West Delhi",
+  ],
   Karnataka: [
     "Bangalore",
     "Mysore",
@@ -293,7 +299,8 @@ const ViewBill = () => {
 
   const formatAddress = (address) => {
     if (!address || typeof address !== "object") return "N/A";
-    const { plotHouseNo, line1, area, landmark, city, state, pincode } = address;
+    const { plotHouseNo, line1, area, landmark, city, state, pincode } =
+      address;
     return [plotHouseNo, line1, area, landmark, city, state, pincode]
       .filter(Boolean)
       .join(", ");
@@ -664,7 +671,12 @@ const ViewBill = () => {
               Address: {formatAddress(userProfile?.address)}
             </Typography>
           </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { xs: "left", md: "right" } }}>
+          <Grid
+            item
+            xs={12}
+            md={6}
+            sx={{ textAlign: { xs: "left", md: "right" } }}
+          >
             <Typography variant="h6" gutterBottom sx={{ fontWeight: "bold" }}>
               TAX INVOICE
             </Typography>
@@ -678,7 +690,9 @@ const ViewBill = () => {
                 value={formik.values.challanNo}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                error={formik.touched.challanNo && Boolean(formik.errors.challanNo)}
+                error={
+                  formik.touched.challanNo && Boolean(formik.errors.challanNo)
+                }
                 helperText={formik.touched.challanNo && formik.errors.challanNo}
                 sx={{ mt: 1.5, mb: 1.5 }}
                 variant="outlined"
@@ -697,7 +711,11 @@ const ViewBill = () => {
 
         <Grid container spacing={3} sx={{ mb: 2 }}>
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: "bold" }}>
+            <Typography
+              variant="subtitle1"
+              gutterBottom
+              sx={{ fontWeight: "bold" }}
+            >
               Billed To:
             </Typography>
             {isEditing ? (
@@ -850,7 +868,9 @@ const ViewBill = () => {
                       formik.handleChange(e);
                       formik.setFieldValue("partyDetails.city", "");
                     }}
-                    onBlur={() => formik.setFieldTouched("partyDetails.state", true)}
+                    onBlur={() =>
+                      formik.setFieldTouched("partyDetails.state", true)
+                    }
                     displayEmpty
                     size="small"
                     renderValue={(selected) =>
@@ -868,7 +888,11 @@ const ViewBill = () => {
                   </Select>
                   {formik.touched.partyDetails?.state &&
                     formik.errors.partyDetails?.state && (
-                      <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
                         {formik.errors.partyDetails.state}
                       </Typography>
                     )}
@@ -886,7 +910,9 @@ const ViewBill = () => {
                     name="partyDetails.city"
                     value={formik.values.partyDetails.city}
                     onChange={formik.handleChange}
-                    onBlur={() => formik.setFieldTouched("partyDetails.city", true)}
+                    onBlur={() =>
+                      formik.setFieldTouched("partyDetails.city", true)
+                    }
                     displayEmpty
                     size="small"
                     renderValue={(selected) =>
@@ -906,7 +932,11 @@ const ViewBill = () => {
                   </Select>
                   {formik.touched.partyDetails?.city &&
                     formik.errors.partyDetails?.city && (
-                      <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
                         {formik.errors.partyDetails.city}
                       </Typography>
                     )}
@@ -950,42 +980,24 @@ const ViewBill = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: "bold" }}>
+            <Typography
+              variant="subtitle1"
+              gutterBottom
+              sx={{ fontWeight: "bold" }}
+            >
               Payment Details:
             </Typography>
             {isEditing ? (
               <>
-                <FormControl
-                  fullWidth
-                  error={formik.touched.paymentMethod && Boolean(formik.errors.paymentMethod)}
-                  sx={{ mb: 2 }}
+                <Typography
+                  variant="body1"
+                  sx={{ mb: 1, fontSize: { xs: "0.875rem", sm: "1rem" } }}
                 >
-                  <Select
-                    name="paymentMethod"
-                    value={formik.values.paymentMethod}
-                    onChange={formik.handleChange}
-                    onBlur={() => formik.setFieldTouched("paymentMethod", true)}
-                    displayEmpty
-                    size="small"
-                    renderValue={(selected) =>
-                      selected ? selected.toUpperCase() : <em>Select Payment Method *</em>
-                    }
-                  >
-                    <MenuItem value="">
-                      <em>Select Payment Method</em>
-                    </MenuItem>
-                    {["cheque", "cash", "upi", "netbanking"].map((method) => (
-                      <MenuItem key={method} value={method}>
-                        {method.toUpperCase()}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {formik.touched.paymentMethod && formik.errors.paymentMethod && (
-                    <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                      {formik.errors.paymentMethod}
-                    </Typography>
-                  )}
-                </FormControl>
+                  <strong>Method:</strong>{" "}
+                  {bill.paymentDetails?.method
+                    ? bill.paymentDetails.method.toUpperCase()
+                    : "N/A"}
+                </Typography>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <Select
                     name="status"
@@ -1011,9 +1023,15 @@ const ViewBill = () => {
               </>
             ) : (
               <>
-                <Typography sx={{ mb: 1 }}>
-                  <strong>Method:</strong> {bill.paymentMethod.toUpperCase()}
-                </Typography>
+<Typography
+              variant="body1"
+              sx={{ mb: 1, fontSize: { xs: "0.875rem", sm: "1rem" } }}
+            >
+              <strong>Method:</strong>{" "}
+              {bill.paymentDetails?.method
+                ? bill.paymentDetails.method.toUpperCase()
+                : "N/A"}
+            </Typography>
                 <Box>
                   <strong>Status:</strong>{" "}
                   <Chip
@@ -1028,10 +1046,18 @@ const ViewBill = () => {
           </Grid>
         </Grid>
 
-        <Typography variant={isMobile ? "h6" : "h5"} gutterBottom sx={{ mb: 2 }}>
+        <Typography
+          variant={isMobile ? "h6" : "h5"}
+          gutterBottom
+          sx={{ mb: 2 }}
+        >
           Item Details
         </Typography>
-        <TableContainer component={Paper} elevation={2} sx={{ mb: 4, overflowX: "auto" }}>
+        <TableContainer
+          component={Paper}
+          elevation={2}
+          sx={{ mb: 4, overflowX: "auto" }}
+        >
           <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: "primary.light" }}>
@@ -1041,7 +1067,9 @@ const ViewBill = () => {
                 <TableCell sx={{ fontWeight: "bold" }}>Quantity</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>Price (₹)</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>Amount (₹)</TableCell>
-                {isEditing && <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>}
+                {isEditing && (
+                  <TableCell sx={{ fontWeight: "bold" }}>Action</TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -1061,7 +1089,10 @@ const ViewBill = () => {
                           error={
                             formik.touched.items &&
                             formik.touched.items[index]?.name &&
-                            Boolean(formik.errors.items && formik.errors.items[index]?.name)
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.name
+                            )
                           }
                           helperText={
                             formik.touched.items &&
@@ -1085,7 +1116,10 @@ const ViewBill = () => {
                           error={
                             formik.touched.items &&
                             formik.touched.items[index]?.hsn &&
-                            Boolean(formik.errors.items && formik.errors.items[index]?.hsn)
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.hsn
+                            )
                           }
                           helperText={
                             formik.touched.items &&
@@ -1111,7 +1145,10 @@ const ViewBill = () => {
                           error={
                             formik.touched.items &&
                             formik.touched.items[index]?.quantity &&
-                            Boolean(formik.errors.items && formik.errors.items[index]?.quantity)
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.quantity
+                            )
                           }
                           helperText={
                             formik.touched.items &&
@@ -1137,7 +1174,10 @@ const ViewBill = () => {
                           error={
                             formik.touched.items &&
                             formik.touched.items[index]?.price &&
-                            Boolean(formik.errors.items && formik.errors.items[index]?.price)
+                            Boolean(
+                              formik.errors.items &&
+                                formik.errors.items[index]?.price
+                            )
                           }
                           helperText={
                             formik.touched.items &&
@@ -1149,7 +1189,9 @@ const ViewBill = () => {
                         `₹${Number(item.price).toFixed(2)}`
                       )}
                     </TableCell>
-                    <TableCell>₹{(item.quantity * Number(item.price)).toFixed(2)}</TableCell>
+                    <TableCell>
+                      ₹{(item.quantity * Number(item.price)).toFixed(2)}
+                    </TableCell>
                     {isEditing && (
                       <TableCell>
                         <IconButton
@@ -1188,7 +1230,11 @@ const ViewBill = () => {
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: "bold" }}>
+            <Typography
+              variant="subtitle1"
+              gutterBottom
+              sx={{ fontWeight: "bold" }}
+            >
               Additional Details:
             </Typography>
             {isEditing ? (
@@ -1202,7 +1248,9 @@ const ViewBill = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   inputProps={{ min: 0, max: 100, step: 0.01 }}
-                  error={formik.touched.discount && Boolean(formik.errors.discount)}
+                  error={
+                    formik.touched.discount && Boolean(formik.errors.discount)
+                  }
                   helperText={formik.touched.discount && formik.errors.discount}
                   sx={{ mb: 2 }}
                   variant="outlined"
@@ -1228,12 +1276,20 @@ const ViewBill = () => {
                 <strong>Notes:</strong> {bill.notes || "N/A"}
               </Typography>
             )}
-            <Paper elevation={2} sx={{ p: 2, mt: 2, backgroundColor: "#f5f5f5" }}>
-              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: "bold" }}>
+            <Paper
+              elevation={2}
+              sx={{ p: 2, mt: 2, backgroundColor: "#f5f5f5" }}
+            >
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{ fontWeight: "bold" }}
+              >
                 Bank Details:
               </Typography>
               <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>Bank Name:</strong> {userProfile?.bankDetails?.bankName || "N/A"}
+                <strong>Bank Name:</strong>{" "}
+                {userProfile?.bankDetails?.bankName || "N/A"}
               </Typography>
               <Typography variant="body2" sx={{ mb: 0.5 }}>
                 <strong>Account Name:</strong>{" "}
@@ -1244,7 +1300,8 @@ const ViewBill = () => {
                 {userProfile?.bankDetails?.accountNumber || "N/A"}
               </Typography>
               <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>IFSC Code:</strong> {userProfile?.bankDetails?.ifscCode || "N/A"}
+                <strong>IFSC Code:</strong>{" "}
+                {userProfile?.bankDetails?.ifscCode || "N/A"}
               </Typography>
             </Paper>
           </Grid>
@@ -1253,7 +1310,9 @@ const ViewBill = () => {
               <Box sx={{ mb: 1 }}>
                 <Grid container justifyContent="space-between">
                   <Typography variant="body2">Subtotal:</Typography>
-                  <Typography variant="body2">₹{totals.subtotal}</Typography>
+                  <Typography variant="body2">
+                    ₹{totals.subtotal.toFixed(2)}
+                  </Typography>
                 </Grid>
               </Box>
               <Box sx={{ mb: 1 }}>
@@ -1261,20 +1320,26 @@ const ViewBill = () => {
                   <Typography variant="body2">
                     Discount ({parseFloat(formik.values.discount) || 0}%):
                   </Typography>
-                  <Typography variant="body2">₹{totals.discountAmount}</Typography>
+                  <Typography variant="body2">
+                    ₹{totals.discountAmount.toFixed(2)}
+                  </Typography>
                 </Grid>
               </Box>
               <Box sx={{ mb: 1 }}>
                 <Grid container justifyContent="space-between">
                   <Typography variant="body2">Taxable Amount:</Typography>
-                  <Typography variant="body2">₹{totals.taxableAmount}</Typography>
+                  <Typography variant="body2">
+                    ₹{totals.taxableAmount.toFixed(2)}
+                  </Typography>
                 </Grid>
               </Box>
               {isEditing ? (
                 <Box sx={{ mb: 1 }}>
                   <FormControl
                     fullWidth
-                    error={formik.touched.gstRate && Boolean(formik.errors.gstRate)}
+                    error={
+                      formik.touched.gstRate && Boolean(formik.errors.gstRate)
+                    }
                   >
                     <Select
                       name="gstRate"
@@ -1284,9 +1349,11 @@ const ViewBill = () => {
                       displayEmpty
                       size="small"
                       renderValue={(selected) =>
-                        selected === "" || selected === null
-                          ? <em>Select GST Rate *</em>
-                          : `${selected}%${selected === 0 ? " (Exempt)" : ""}`
+                        selected === "" || selected === null ? (
+                          <em>Select GST Rate *</em>
+                        ) : (
+                          `${selected}%${selected === 0 ? " (Exempt)" : ""}`
+                        )
                       }
                     >
                       <MenuItem value="">
@@ -1299,7 +1366,11 @@ const ViewBill = () => {
                       ))}
                     </Select>
                     {formik.touched.gstRate && formik.errors.gstRate && (
-                      <Typography variant="caption" color="error" sx={{ mt: 1 }}>
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 1 }}
+                      >
                         {formik.errors.gstRate}
                       </Typography>
                     )}
@@ -1313,7 +1384,9 @@ const ViewBill = () => {
                         <Typography variant="body2">
                           CGST ({bill.gstRate / 2}%):
                         </Typography>
-                        <Typography variant="body2">₹{totals.cgst}</Typography>
+                        <Typography variant="body2">
+                          ₹{totals.cgst.toFixed(2)}
+                        </Typography>
                       </Grid>
                     </Box>
                   )}
@@ -1323,7 +1396,9 @@ const ViewBill = () => {
                         <Typography variant="body2">
                           SGST ({bill.gstRate / 2}%):
                         </Typography>
-                        <Typography variant="body2">₹{totals.sgst}</Typography>
+                        <Typography variant="body2">
+                          ₹{totals.sgst.toFixed(2)}
+                        </Typography>
                       </Grid>
                     </Box>
                   )}
@@ -1333,7 +1408,9 @@ const ViewBill = () => {
                         <Typography variant="body2">
                           IGST ({bill.gstRate}%):
                         </Typography>
-                        <Typography variant="body2">₹{totals.igst}</Typography>
+                        <Typography variant="body2">
+                          ₹{totals.igst.toFixed(2)}
+                        </Typography>
                       </Grid>
                     </Box>
                   )}
@@ -1365,14 +1442,21 @@ const ViewBill = () => {
           </Grid>
         </Grid>
 
-        <Dialog open={openAddItem} onClose={() => setOpenAddItem(false)} fullWidth maxWidth="sm">
+        <Dialog
+          open={openAddItem}
+          onClose={() => setOpenAddItem(false)}
+          fullWidth
+          maxWidth="sm"
+        >
           <DialogTitle>Add New Item</DialogTitle>
           <DialogContent>
             <TextField
               fullWidth
               label="Item Name *"
               value={newItem.name}
-              onChange={(e) => setNewItem((prev) => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setNewItem((prev) => ({ ...prev, name: e.target.value }))
+              }
               sx={{ mt: 2 }}
               variant="outlined"
               size="small"
@@ -1381,7 +1465,9 @@ const ViewBill = () => {
               fullWidth
               label="HSN Code"
               value={newItem.hsn}
-              onChange={(e) => setNewItem((prev) => ({ ...prev, hsn: e.target.value }))}
+              onChange={(e) =>
+                setNewItem((prev) => ({ ...prev, hsn: e.target.value }))
+              }
               sx={{ mt: 2 }}
               variant="outlined"
               size="small"
@@ -1432,7 +1518,8 @@ const ViewBill = () => {
           <DialogTitle>Delete Invoice</DialogTitle>
           <DialogContent>
             <Typography>
-              Are you sure you want to delete this invoice? This action cannot be undone.
+              Are you sure you want to delete this invoice? This action cannot
+              be undone.
             </Typography>
           </DialogContent>
           <DialogActions>
@@ -1451,13 +1538,17 @@ const ViewBill = () => {
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         >
-          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
             {snackbar.message}
           </Alert>
         </Snackbar>
       </Paper>
     </Container>
   );
-};
+};;
 
 export default ViewBill;

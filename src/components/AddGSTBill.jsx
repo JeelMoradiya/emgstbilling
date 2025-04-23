@@ -611,7 +611,7 @@ const AddGSTBill = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={4}>
+            {/* <Grid item xs={12} sm={4}>
               <FormControl
                 fullWidth
                 error={
@@ -673,7 +673,7 @@ const AddGSTBill = () => {
                     </Typography>
                   )}
               </FormControl>
-            </Grid>
+            </Grid> */}
 
             <Grid item xs={12} sm={4}>
               <FormControl

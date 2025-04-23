@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -18,8 +18,6 @@ import {
   TableRow,
   Chip,
   CircularProgress,
-  Tabs,
-  Tab,
   Card,
   CardContent,
   TextField,
@@ -31,14 +29,14 @@ import {
 } from "@mui/material";
 import { Search } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
-import { BarChart } from "@mui/x-charts/BarChart";
-import logo from "../assets/logo.gif"
+import { BarChart, PieChart, LineChart } from "@mui/x-charts";
+import logo from "../assets/logo.gif";
 
 const Home = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // State for bills and filtering
+  // State for bills, parties, and filtering
   const [bills, setBills] = useState([]);
   const [filteredBills, setFilteredBills] = useState([]);
   const [parties, setParties] = useState({});
@@ -51,9 +49,16 @@ const Home = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  // State for bill statistics chart
+  // State for charts and financial metrics
   const [billStats, setBillStats] = useState({ paid: [], pending: [] });
-  const [timePeriod, setTimePeriod] = useState("day");
+  const [billTimePeriod, setBillTimePeriod] = useState("month");
+  const [paymentTimePeriod, setPaymentTimePeriod] = useState("month");
+  const [turnoverTimePeriod, setTurnoverTimePeriod] = useState("year");
+  const [paidPendingTimePeriod, setPaidPendingTimePeriod] = useState("month");
+  const [paymentMethodData, setPaymentMethodData] = useState([]);
+  const [turnoverData, setTurnoverData] = useState([]);
+  const [paidAmountData, setPaidAmountData] = useState([]);
+  const [pendingAmountData, setPendingAmountData] = useState([]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -76,8 +81,11 @@ const Home = () => {
 
     const fetchData = async () => {
       try {
-        // Fetch parties
-        const partiesQuery = collection(db, "parties");
+        // Fetch parties (only those created by the current user)
+        const partiesQuery = query(
+          collection(db, "parties"),
+          where("createdBy", "==", currentUser.uid)
+        );
         const partiesSnapshot = await getDocs(partiesQuery);
         const partiesMap = {};
         partiesSnapshot.forEach((doc) => {
@@ -86,41 +94,25 @@ const Home = () => {
         });
         setParties(partiesMap);
 
-        // Fetch bills
-        const billsQuery = collection(db, "bills");
+        // Fetch bills (only those created by the current user)
+        const billsQuery = query(
+          collection(db, "bills"),
+          where("createdBy", "==", currentUser.uid)
+        );
         const billsSnapshot = await getDocs(billsQuery);
         const billsData = billsSnapshot.docs
           .map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }))
-          .filter((bill) => bill.createdBy === currentUser.uid)
           .sort((a, b) =>
             String(a.billNo || "").localeCompare(String(b.billNo || ""))
           );
         setBills(billsData);
         setFilteredBills(billsData);
 
-        // Calculate bill statistics
-        const now = new Date();
-        const stats = { paid: [], pending: [] };
-        const periods = getPeriods(timePeriod);
-
-        periods.forEach((period) => {
-          const periodBills = billsData.filter((bill) => {
-            const billDate = new Date(bill.date);
-            return isInPeriod(billDate, period, timePeriod);
-          });
-
-          stats.paid.push(
-            periodBills.filter((b) => b.status === "paid").length
-          );
-          stats.pending.push(
-            periodBills.filter((b) => b.status === "pending").length
-          );
-        });
-
-        setBillStats(stats);
+        // Calculate financial metrics
+        calculateFinancialMetrics(billsData, partiesMap);
       } catch (error) {
         console.error("Error fetching data: ", error);
       } finally {
@@ -129,41 +121,39 @@ const Home = () => {
     };
 
     fetchData();
-  }, [currentUser, timePeriod]);
+  }, [currentUser]);
 
   const getPeriods = (periodType) => {
     const now = new Date();
+    let length;
     switch (periodType) {
       case "day":
-        return Array.from({ length: 7 }, (_, i) => {
-          const date = new Date(now);
-          date.setDate(now.getDate() - i);
-          return date;
-        }).reverse();
+        length = 7;
+        break;
       case "week":
-        return Array.from({ length: 4 }, (_, i) => {
-          const date = new Date(now);
-          date.setDate(now.getDate() - i * 7);
-          return date;
-        }).reverse();
+        length = 4;
+        break;
       case "month":
-        return Array.from({ length: 6 }, (_, i) => {
-          const date = new Date(now);
-          date.setMonth(now.getMonth() - i);
-          return date;
-        }).reverse();
+        length = 6;
+        break;
       case "year":
-        return Array.from({ length: 5 }, (_, i) => {
-          const date = new Date(now);
-          date.setFullYear(now.getFullYear() - i);
-          return date;
-        }).reverse();
+        length = 6;
+        break;
       default:
         return [];
     }
+    return Array.from({ length }, (_, i) => {
+      const date = new Date(now);
+      if (periodType === "day") date.setDate(now.getDate() - i);
+      else if (periodType === "week") date.setDate(now.getDate() - i * 7);
+      else if (periodType === "month") date.setMonth(now.getMonth() - i);
+      else if (periodType === "year") date.setFullYear(now.getFullYear() - i);
+      return date;
+    }).reverse();
   };
 
   const isInPeriod = (billDate, periodDate, periodType) => {
+    if (!(billDate instanceof Date) || isNaN(billDate)) return false;
     switch (periodType) {
       case "day":
         return billDate.toDateString() === periodDate.toDateString();
@@ -185,8 +175,8 @@ const Home = () => {
     }
   };
 
-  const formatLabel = (date) => {
-    switch (timePeriod) {
+  const formatLabel = (date, periodType) => {
+    switch (periodType) {
       case "day":
         return date.toLocaleDateString("en-US", { weekday: "short" });
       case "week":
@@ -198,6 +188,108 @@ const Home = () => {
       default:
         return "";
     }
+  };
+
+  const calculateBillStats = (billsData, periodType) => {
+    const periods = getPeriods(periodType);
+    const stats = { paid: new Array(periods.length).fill(0), pending: new Array(periods.length).fill(0) };
+
+    billsData.forEach((bill) => {
+      try {
+        const billDate = parseISO(bill.date);
+        periods.forEach((period, index) => {
+          if (isInPeriod(billDate, period, periodType)) {
+            if (bill.status === "paid") stats.paid[index]++;
+            else if (bill.status === "pending") stats.pending[index]++;
+          }
+        });
+      } catch (error) {
+        console.error("Error parsing bill date:", bill.date, error);
+      }
+    });
+
+    return stats;
+  };
+
+  const calculatePaidPendingAmounts = (billsData, periodType) => {
+    const periods = getPeriods(periodType);
+    const paid = new Array(periods.length).fill(0);
+    const pending = new Array(periods.length).fill(0);
+
+    billsData.forEach((bill) => {
+      try {
+        const billDate = parseISO(bill.date);
+        periods.forEach((period, index) => {
+          if (isInPeriod(billDate, period, periodType)) {
+            if (bill.status === "paid") paid[index] += bill.total || 0;
+            else if (bill.status === "pending") pending[index] += bill.total || 0;
+          }
+        });
+      } catch (error) {
+        console.error("Error parsing bill date:", bill.date, error);
+      }
+    });
+
+    return { paid, pending };
+  };
+
+  const calculateFinancialMetrics = (billsData, partiesMap) => {
+    // Calculate bill stats for BarChart
+    const billStatsData = calculateBillStats(billsData, billTimePeriod);
+    setBillStats(billStatsData);
+
+    // Calculate paid and pending amounts for LineChart
+    const paidPendingData = calculatePaidPendingAmounts(billsData, paidPendingTimePeriod);
+    setPaidAmountData(paidPendingData.paid);
+    setPendingAmountData(paidPendingData.pending);
+
+    const paymentPeriods = getPeriods(paymentTimePeriod);
+    const turnoverPeriods = getPeriods(turnoverTimePeriod);
+
+    // Payment Methods Distribution (for PieChart)
+    const methodCounts = { cheque: 0, cash: 0, upi: 0, netbanking: 0, none: 0 };
+    billsData.forEach((bill) => {
+      try {
+        const billDate = parseISO(bill.date);
+        if (isInPeriod(billDate, paymentPeriods[0], paymentTimePeriod)) {
+          const method = bill.paymentMethod || "none";
+          methodCounts[method]++;
+        }
+      } catch (error) {
+        console.error("Error parsing bill date:", bill.date, error);
+      }
+    });
+    setPaymentMethodData([
+      { id: 0, value: methodCounts.cheque, label: "Cheque", color: "#3498db" },
+      { id: 1, value: methodCounts.cash, label: "Cash", color: "#2ecc71" },
+      { id: 2, value: methodCounts.upi, label: "UPI", color: "#e74c3c" },
+      {
+        id: 3,
+        value: methodCounts.netbanking,
+        label: "Net Banking",
+        color: "#f1c40f",
+      },
+      { id: 4, value: methodCounts.none, label: "None", color: "#95a5a6" },
+    ]);
+
+    // Turnover (Total payments per period)
+    const turnover = new Array(turnoverPeriods.length).fill(0);
+    billsData.forEach((bill) => {
+      try {
+        const billDate = parseISO(bill.date);
+        turnoverPeriods.forEach((period, index) => {
+          if (
+            bill.status === "paid" &&
+            isInPeriod(billDate, period, turnoverTimePeriod)
+          ) {
+            turnover[index] += bill.total || 0;
+          }
+        });
+      } catch (error) {
+        console.error("Error parsing bill date:", bill.date, error);
+      }
+    });
+    setTurnoverData(turnover);
   };
 
   const applyFilters = () => {
@@ -220,7 +312,7 @@ const Home = () => {
       filtered = filtered.filter((bill) => bill.status === "pending");
     }
 
-    // Apply date range filter only if both dates are selected and filter is applied
+    // Apply date range filter
     if (startDate && endDate && isFilterApplied) {
       filtered = filtered.filter((bill) => {
         try {
@@ -229,7 +321,7 @@ const Home = () => {
           const end = parseISO(endDate);
           return isWithinInterval(billDate, { start, end });
         } catch (error) {
-          console.error("Date parsing error:", error);
+          console.error("Date parsing error:", bill.date, error);
           return false;
         }
       });
@@ -237,6 +329,7 @@ const Home = () => {
 
     setFilteredBills(filtered);
     setPage(0);
+    calculateFinancialMetrics(filtered, parties);
   };
 
   const handleSearch = () => {
@@ -261,7 +354,7 @@ const Home = () => {
     setStatusFilter(event.target.value);
   };
 
-  // Auto-reset if all filters are cleared
+  // Auto-reset filters
   useEffect(() => {
     if (!startDate && !endDate && !partySearch) {
       setIsFilterApplied(false);
@@ -270,10 +363,10 @@ const Home = () => {
     }
   }, [startDate, endDate, partySearch, bills]);
 
-  // Re-apply filters when status changes
+  // Re-apply filters when status or time periods change
   useEffect(() => {
     applyFilters();
-  }, [bills, statusFilter]);
+  }, [bills, statusFilter, billTimePeriod, paymentTimePeriod, turnoverTimePeriod, paidPendingTimePeriod]);
 
   const summary = {
     total: filteredBills.reduce((sum, bill) => sum + (bill.total || 0), 0),
@@ -285,16 +378,36 @@ const Home = () => {
       .reduce((sum, bill) => sum + (bill.total || 0), 0),
   };
 
-useEffect(() => {
-    if (loading) {
-      setLoading(true);
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 3000); // 3 seconds
-
-      return () => clearTimeout(timer); // Cleanup on unmount
-    }
-  }, [loading]);
+  const turnoverSummary = {
+    day: bills
+      .filter(
+        (bill) =>
+          bill.status === "paid" &&
+          isInPeriod(parseISO(bill.date), new Date(), "day")
+      )
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
+    week: bills
+      .filter(
+        (bill) =>
+          bill.status === "paid" &&
+          isInPeriod(parseISO(bill.date), new Date(), "week")
+      )
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
+    month: bills
+      .filter(
+        (bill) =>
+          bill.status === "paid" &&
+          isInPeriod(parseISO(bill.date), new Date(), "month")
+      )
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
+    year: bills
+      .filter(
+        (bill) =>
+          bill.status === "paid" &&
+          isInPeriod(parseISO(bill.date), new Date(), "year")
+      )
+      .reduce((sum, bill) => sum + (bill.total || 0), 0),
+  };
 
   if (loading) {
     return (
@@ -328,7 +441,41 @@ useEffect(() => {
       }}
     >
       <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+        {/* Turnover Summary Cards */}
         <Grid item xs={12}>
+          <Grid container spacing={{ xs: 1, sm: 2 }}>
+            {["day", "week", "month", "year"].map((period) => (
+              <Grid item xs={12} sm={6} md={3} key={period}>
+                <Card
+                  sx={{
+                    bgcolor: "primary.light",
+                    borderRadius: 2,
+                    textAlign: "center",
+                  }}
+                >
+                  <CardContent>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                    >
+                      {period.charAt(0).toUpperCase() + period.slice(1)} Turnover
+                    </Typography>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontSize: { xs: "1.2rem", sm: "1.5rem" } }}
+                    >
+                      ₹{turnoverSummary[period].toFixed(2)}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+
+        {/* Bill Statistics */}
+        <Grid item xs={12} md={6}>
           <Paper
             elevation={3}
             sx={{
@@ -338,66 +485,61 @@ useEffect(() => {
               boxSizing: "border-box",
             }}
           >
-            <Typography
-              variant="h6"
+            <Box
               sx={{
-                fontWeight: "bold",
-                color: "primary.main",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 mb: 3,
-                fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
               }}
             >
-              Bill Statistics
-            </Typography>
-            <Tabs
-              value={timePeriod}
-              onChange={(e, newValue) => setTimePeriod(newValue)}
-              sx={{ mb: 4 }}
-              variant="scrollable"
-              scrollButtons="auto"
-            >
-              <Tab
-                label="Daily"
-                value="day"
+              <Typography
+                variant="h6"
                 sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                  fontWeight: "bold",
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
                 }}
-              />
-              <Tab
-                label="Weekly"
-                value="week"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                }}
-              />
-              <Tab
-                label="Monthly"
-                value="month"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                }}
-              />
-              <Tab
-                label="Yearly"
-                value="year"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
-                }}
-              />
-            </Tabs>
+              >
+                Bill Statistics
+              </Typography>
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                  Period
+                </InputLabel>
+                <Select
+                  value={billTimePeriod}
+                  onChange={(e) => setBillTimePeriod(e.target.value)}
+                  label="Period"
+                  size="small"
+                  sx={{
+                    "& .MuiSelect-select": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                >
+                  <MenuItem value="day">Daily</MenuItem>
+                  <MenuItem value="week">Weekly</MenuItem>
+                  <MenuItem value="month">Monthly</MenuItem>
+                  <MenuItem value="year">Yearly</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
             <BarChart
               series={[
-                { data: billStats.paid, label: "Paid", color: "#2ecc71" },
-                { data: billStats.pending, label: "Pending", color: "#f1c40f" },
+                { data: billStats.paid, label: "Paid Bills", color: "#2ecc71" },
+                {
+                  data: billStats.pending,
+                  label: "Pending Bills",
+                  color: "#f1c40f",
+                },
               ]}
               height={350}
               xAxis={[
                 {
-                  data: getPeriods(timePeriod).map(formatLabel),
+                  data: getPeriods(billTimePeriod).map((date) =>
+                    formatLabel(date, billTimePeriod)
+                  ),
                   scaleType: "band",
                 },
               ]}
@@ -413,6 +555,234 @@ useEffect(() => {
           </Paper>
         </Grid>
 
+        {/* Paid and Pending Amounts */}
+        <Grid item xs={12} md={6}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: { xs: 2, sm: 3, md: 4 },
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                }}
+              >
+                Paid & Pending Amounts
+              </Typography>
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                  Period
+                </InputLabel>
+                <Select
+                  value={paidPendingTimePeriod}
+                  onChange={(e) => setPaidPendingTimePeriod(e.target.value)}
+                  label="Period"
+                  size="small"
+                  sx={{
+                    "& .MuiSelect-select": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                >
+                  <MenuItem value="day">Daily</MenuItem>
+                  <MenuItem value="week">Weekly</MenuItem>
+                  <MenuItem value="month">Monthly</MenuItem>
+                  <MenuItem value="year">Yearly</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            {paidAmountData.length === getPeriods(paidPendingTimePeriod).length &&
+            pendingAmountData.length === getPeriods(paidPendingTimePeriod).length ? (
+              <LineChart
+                series={[
+                  { data: paidAmountData, label: "Paid Amount", color: "#2ecc71" },
+                  { data: pendingAmountData, label: "Pending Amount", color: "#f1c40f" },
+                ]}
+                height={350}
+                xAxis={[
+                  {
+                    data: getPeriods(paidPendingTimePeriod).map((date) =>
+                      formatLabel(date, paidPendingTimePeriod)
+                    ),
+                    scaleType: "point",
+                  },
+                ]}
+                margin={{ top: 30, bottom: 50, left: 60, right: 30 }}
+                sx={{
+                  "& .MuiChartsAxis-label": {
+                    fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                  },
+                  "& .MuiChartsLegend-root": { marginTop: "20px" },
+                  width: "100%",
+                }}
+              />
+            ) : (
+              <Typography color="error">Data mismatch: Please try again.</Typography>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* Payment Methods Distribution */}
+        <Grid item xs={12} md={6}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: { xs: 2, sm: 3, md: 4 },
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                }}
+              >
+                Payment Methods Distribution
+              </Typography>
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                  Period
+                </InputLabel>
+                <Select
+                  value={paymentTimePeriod}
+                  onChange={(e) => setPaymentTimePeriod(e.target.value)}
+                  label="Period"
+                  size="small"
+                  sx={{
+                    "& .MuiSelect-select": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                >
+                  <MenuItem value="day">Daily</MenuItem>
+                  <MenuItem value="week">Weekly</MenuItem>
+                  <MenuItem value="month">Monthly</MenuItem>
+                  <MenuItem value="year">Yearly</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <PieChart
+              series={[
+                { data: paymentMethodData, innerRadius: 30, outerRadius: 100 },
+              ]}
+              height={300}
+              margin={{ top: 30, bottom: 50, left: 30, right: 30 }}
+              sx={{
+                "& .MuiChartsLegend-root": { marginTop: "20px" },
+                width: "100%",
+              }}
+            />
+          </Paper>
+        </Grid>
+
+        {/* Turnover Over Time */}
+        <Grid item xs={12} md={6}>
+          <Paper
+            elevation={3}
+            sx={{
+              p: { xs: 2, sm: 3, md: 4 },
+              borderRadius: 2,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  color: "primary.main",
+                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                }}
+              >
+                Turnover Over Time
+              </Typography>
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
+                  Period
+                </InputLabel>
+                <Select
+                  value={turnoverTimePeriod}
+                  onChange={(e) => setTurnoverTimePeriod(e.target.value)}
+                  label="Period"
+                  size="small"
+                  sx={{
+                    "& .MuiSelect-select": {
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    },
+                  }}
+                >
+                  <MenuItem value="day">Daily</MenuItem>
+                  <MenuItem value="week">Weekly</MenuItem>
+                  <MenuItem value="month">Monthly</MenuItem>
+                  <MenuItem value="year">Yearly</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            {turnoverData.length === getPeriods(turnoverTimePeriod).length ? (
+              <LineChart
+                series={[
+                  { data: turnoverData, label: "Total Turnover", color: "#3498db" },
+                ]}
+                height={300}
+                xAxis={[
+                  {
+                    data: getPeriods(turnoverTimePeriod).map((date) =>
+                      formatLabel(date, turnoverTimePeriod)
+                    ),
+                    scaleType: "point",
+                  },
+                ]}
+                margin={{ top: 30, bottom: 50, left: 60, right: 30 }}
+                sx={{
+                  "& .MuiChartsAxis-label": {
+                    fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                  },
+                  "& .MuiChartsLegend-root": { marginTop: "20px" },
+                  width: "100%",
+                }}
+              />
+            ) : (
+              <Typography color="error">Data mismatch: Please try again.</Typography>
+            )}
+          </Paper>
+        </Grid>
+
+        {/* All Bills */}
         <Grid item xs={12}>
           <Paper
             elevation={3}
@@ -673,7 +1043,17 @@ useEffect(() => {
                         textAlign: "center",
                       }}
                     >
+                      Payment Method
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: { xs: "0.85rem", sm: "0.95rem", md: "1rem" },
+                        textAlign: "center",
+                      }}
+                    >
                       Actions
+_
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -738,6 +1118,20 @@ useEffect(() => {
                                 fontSize: { xs: "0.75rem", sm: "0.85rem" },
                               }}
                             />
+                          </TableCell>
+                          <TableCell
+                            align="center"
+                            sx={{
+                              fontSize: {
+                                xs: "0.8rem",
+                                sm: "0.9rem",
+                                md: "1rem",
+                              },
+                            }}
+                          >
+                            {bill.paymentDetails?.method
+                              ? bill.paymentDetails.method.toUpperCase()
+                              : "N/A"}
                           </TableCell>
                           <TableCell align="center">
                             <Button
