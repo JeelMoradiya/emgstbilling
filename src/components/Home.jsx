@@ -17,7 +17,6 @@ import {
   TableHead,
   TableRow,
   Chip,
-  CircularProgress,
   Card,
   CardContent,
   TextField,
@@ -26,8 +25,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
-import { Search } from "@mui/icons-material";
+import { Search, Download } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { BarChart, PieChart, LineChart } from "@mui/x-charts";
 import logo from "../assets/logo.gif";
@@ -45,6 +46,7 @@ const Home = () => {
   const [endDate, setEndDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [partySearch, setPartySearch] = useState("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("All");
   const [isFilterApplied, setIsFilterApplied] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -59,6 +61,7 @@ const Home = () => {
   const [turnoverData, setTurnoverData] = useState([]);
   const [paidAmountData, setPaidAmountData] = useState([]);
   const [pendingAmountData, setPendingAmountData] = useState([]);
+  const [hoveredMethod, setHoveredMethod] = useState(null);
 
   useEffect(() => {
     if (!currentUser) {
@@ -81,7 +84,7 @@ const Home = () => {
 
     const fetchData = async () => {
       try {
-        // Fetch parties (only those created by the current user)
+        // Fetch parties
         const partiesQuery = query(
           collection(db, "parties"),
           where("createdBy", "==", currentUser.uid)
@@ -94,7 +97,7 @@ const Home = () => {
         });
         setParties(partiesMap);
 
-        // Fetch bills (only those created by the current user)
+        // Fetch bills
         const billsQuery = query(
           collection(db, "bills"),
           where("createdBy", "==", currentUser.uid)
@@ -192,7 +195,10 @@ const Home = () => {
 
   const calculateBillStats = (billsData, periodType) => {
     const periods = getPeriods(periodType);
-    const stats = { paid: new Array(periods.length).fill(0), pending: new Array(periods.length).fill(0) };
+    const stats = {
+      paid: new Array(periods.length).fill(0),
+      pending: new Array(periods.length).fill(0),
+    };
 
     billsData.forEach((bill) => {
       try {
@@ -222,7 +228,8 @@ const Home = () => {
         periods.forEach((period, index) => {
           if (isInPeriod(billDate, period, periodType)) {
             if (bill.status === "paid") paid[index] += bill.total || 0;
-            else if (bill.status === "pending") pending[index] += bill.total || 0;
+            else if (bill.status === "pending")
+              pending[index] += bill.total || 0;
           }
         });
       } catch (error) {
@@ -239,40 +246,91 @@ const Home = () => {
     setBillStats(billStatsData);
 
     // Calculate paid and pending amounts for LineChart
-    const paidPendingData = calculatePaidPendingAmounts(billsData, paidPendingTimePeriod);
+    const paidPendingData = calculatePaidPendingAmounts(
+      billsData,
+      paidPendingTimePeriod
+    );
     setPaidAmountData(paidPendingData.paid);
     setPendingAmountData(paidPendingData.pending);
 
     const paymentPeriods = getPeriods(paymentTimePeriod);
     const turnoverPeriods = getPeriods(turnoverTimePeriod);
 
-    // Payment Methods Distribution (for PieChart)
+    // Payment Methods Distribution
     const methodCounts = { cheque: 0, cash: 0, upi: 0, netbanking: 0, none: 0 };
+    const methodTotals = { cheque: 0, cash: 0, upi: 0, netbanking: 0, none: 0 };
     billsData.forEach((bill) => {
       try {
         const billDate = parseISO(bill.date);
         if (isInPeriod(billDate, paymentPeriods[0], paymentTimePeriod)) {
           const method = bill.paymentMethod || "none";
           methodCounts[method]++;
+          methodTotals[method] += bill.total || 0;
         }
       } catch (error) {
         console.error("Error parsing bill date:", bill.date, error);
       }
     });
-    setPaymentMethodData([
-      { id: 0, value: methodCounts.cheque, label: "Cheque", color: "#3498db" },
-      { id: 1, value: methodCounts.cash, label: "Cash", color: "#2ecc71" },
-      { id: 2, value: methodCounts.upi, label: "UPI", color: "#e74c3c" },
+
+    const totalTransactions = Object.values(methodCounts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+    const paymentData = [
+      {
+        id: 0,
+        value: methodCounts.cheque,
+        label: "Cheque",
+        color: "#3498db",
+        total: methodTotals.cheque,
+        percentage: totalTransactions
+          ? ((methodCounts.cheque / totalTransactions) * 100).toFixed(1)
+          : 0,
+      },
+      {
+        id: 1,
+        value: methodCounts.cash,
+        label: "Cash",
+        color: "#2ecc71",
+        total: methodTotals.cash,
+        percentage: totalTransactions
+          ? ((methodCounts.cash / totalTransactions) * 100).toFixed(1)
+          : 0,
+      },
+      {
+        id: 2,
+        value: methodCounts.upi,
+        label: "UPI",
+        color: "#e74c3c",
+        total: methodTotals.upi,
+        percentage: totalTransactions
+          ? ((methodCounts.upi / totalTransactions) * 100).toFixed(1)
+          : 0,
+      },
       {
         id: 3,
         value: methodCounts.netbanking,
         label: "Net Banking",
         color: "#f1c40f",
+        total: methodTotals.netbanking,
+        percentage: totalTransactions
+          ? ((methodCounts.netbanking / totalTransactions) * 100).toFixed(1)
+          : 0,
       },
-      { id: 4, value: methodCounts.none, label: "None", color: "#95a5a6" },
-    ]);
+      {
+        id: 4,
+        value: methodCounts.none,
+        label: "None",
+        color: "#95a5a6",
+        total: methodTotals.none,
+        percentage: totalTransactions
+          ? ((methodCounts.none / totalTransactions) * 100).toFixed(1)
+          : 0,
+      },
+    ];
+    setPaymentMethodData(paymentData);
 
-    // Turnover (Total payments per period)
+    // Turnover
     const turnover = new Array(turnoverPeriods.length).fill(0);
     billsData.forEach((bill) => {
       try {
@@ -295,7 +353,7 @@ const Home = () => {
   const applyFilters = () => {
     let filtered = [...bills];
 
-    // Apply party name search
+    // Filter by party name
     if (partySearch.trim()) {
       filtered = filtered.filter((bill) => {
         const partyName = parties[bill.partyId] || "Unknown";
@@ -305,14 +363,14 @@ const Home = () => {
       });
     }
 
-    // Apply status filter
+    // Filter by status
     if (statusFilter === "Paid") {
       filtered = filtered.filter((bill) => bill.status === "paid");
     } else if (statusFilter === "Pending") {
       filtered = filtered.filter((bill) => bill.status === "pending");
     }
 
-    // Apply date range filter
+    // Filter by date range
     if (startDate && endDate && isFilterApplied) {
       filtered = filtered.filter((bill) => {
         try {
@@ -324,6 +382,14 @@ const Home = () => {
           console.error("Date parsing error:", bill.date, error);
           return false;
         }
+      });
+    }
+
+    // Filter by payment method
+    if (paymentMethodFilter !== "All") {
+      filtered = filtered.filter((bill) => {
+        const method = bill.paymentMethod || "none";
+        return method === paymentMethodFilter.toLowerCase();
       });
     }
 
@@ -354,19 +420,54 @@ const Home = () => {
     setStatusFilter(event.target.value);
   };
 
-  // Auto-reset filters
+  const handlePaymentMethodFilterChange = (event) => {
+    setPaymentMethodFilter(event.target.value);
+  };
+
+  const handleDownloadPaymentData = () => {
+    const csvContent = [
+      "Payment Method,Transactions,Percentage,Total Amount",
+      ...paymentMethodData.map(
+        (method) =>
+          `${method.label},${method.value},${
+            method.percentage
+          }%,₹${method.total.toFixed(2)}`
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payment_methods_${paymentTimePeriod}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
-    if (!startDate && !endDate && !partySearch) {
+    if (
+      !startDate &&
+      !endDate &&
+      !partySearch &&
+      paymentMethodFilter === "All"
+    ) {
       setIsFilterApplied(false);
       setFilteredBills(bills);
       setPage(0);
     }
-  }, [startDate, endDate, partySearch, bills]);
+  }, [startDate, endDate, partySearch, paymentMethodFilter, bills]);
 
-  // Re-apply filters when status or time periods change
   useEffect(() => {
     applyFilters();
-  }, [bills, statusFilter, billTimePeriod, paymentTimePeriod, turnoverTimePeriod, paidPendingTimePeriod]);
+  }, [
+    bills,
+    statusFilter,
+    paymentMethodFilter,
+    billTimePeriod,
+    paymentTimePeriod,
+    turnoverTimePeriod,
+    paidPendingTimePeriod,
+  ]);
 
   const summary = {
     total: filteredBills.reduce((sum, bill) => sum + (bill.total || 0), 0),
@@ -430,6 +531,11 @@ const Home = () => {
     );
   }
 
+  const totalTransactions = paymentMethodData.reduce(
+    (sum, method) => sum + method.value,
+    0
+  );
+
   return (
     <Container
       sx={{
@@ -451,6 +557,8 @@ const Home = () => {
                     bgcolor: "primary.light",
                     borderRadius: 2,
                     textAlign: "center",
+                    transition: "transform 0.3s",
+                    "&:hover": { transform: "scale(1.03)" },
                   }}
                 >
                   <CardContent>
@@ -459,7 +567,8 @@ const Home = () => {
                       color="text.secondary"
                       sx={{ fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
                     >
-                      {period.charAt(0).toUpperCase() + period.slice(1)} Turnover
+                      {period.charAt(0).toUpperCase() + period.slice(1)}{" "}
+                      Turnover
                     </Typography>
                     <Typography
                       variant="h6"
@@ -606,12 +715,22 @@ const Home = () => {
                 </Select>
               </FormControl>
             </Box>
-            {paidAmountData.length === getPeriods(paidPendingTimePeriod).length &&
-            pendingAmountData.length === getPeriods(paidPendingTimePeriod).length ? (
+            {paidAmountData.length ===
+              getPeriods(paidPendingTimePeriod).length &&
+            pendingAmountData.length ===
+              getPeriods(paidPendingTimePeriod).length ? (
               <LineChart
                 series={[
-                  { data: paidAmountData, label: "Paid Amount", color: "#2ecc71" },
-                  { data: pendingAmountData, label: "Pending Amount", color: "#f1c40f" },
+                  {
+                    data: paidAmountData,
+                    label: "Paid Amount",
+                    color: "#2ecc71",
+                  },
+                  {
+                    data: pendingAmountData,
+                    label: "Pending Amount",
+                    color: "#f1c40f",
+                  },
                 ]}
                 height={350}
                 xAxis={[
@@ -632,7 +751,9 @@ const Home = () => {
                 }}
               />
             ) : (
-              <Typography color="error">Data mismatch: Please try again.</Typography>
+              <Typography color="error">
+                Data mismatch: Please try again.
+              </Typography>
             )}
           </Paper>
         </Grid>
@@ -648,57 +769,202 @@ const Home = () => {
               boxSizing: "border-box",
             }}
           >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "primary.main",
+                mb: 3,
+                fontSize: { xs: "1.25rem", sm: "1.5rem" },
+              }}
+            >
+              Payment Methods Distribution
+            </Typography>
             <Box
               sx={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
+                flexDirection: { xs: "column", md: "row" },
+                gap: 3,
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: "bold",
-                  color: "primary.main",
-                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                }}
-              >
-                Payment Methods Distribution
-              </Typography>
-              <FormControl sx={{ minWidth: 120 }}>
-                <InputLabel sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}>
-                  Period
-                </InputLabel>
-                <Select
-                  value={paymentTimePeriod}
-                  onChange={(e) => setPaymentTimePeriod(e.target.value)}
-                  label="Period"
-                  size="small"
-                  sx={{
-                    "& .MuiSelect-select": {
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <PieChart
+                  series={[
+                    {
+                      data: filteredBills
+                        .reduce((acc, bill) => {
+                          const method = bill.paymentDetails?.method || "none";
+                          const existing = acc.find(
+                            (item) => item.label === method
+                          );
+                          if (existing) {
+                            existing.value += 1;
+                            existing.total += bill.total || 0;
+                          } else {
+                            acc.push({
+                              id: acc.length,
+                              value: 1,
+                              label: method,
+                              color:
+                                method === "cheque"
+                                  ? "#3498db"
+                                  : method === "cash"
+                                  ? "#2ecc71"
+                                  : method === "upi"
+                                  ? "#e74c3c"
+                                  : method === "netbanking"
+                                  ? "#f1c40f"
+                                  : "#95a5a6",
+                              total: bill.total || 0,
+                              percentage: 0, // Will be calculated below
+                            });
+                          }
+                          return acc;
+                        }, [])
+                        .map((item) => ({
+                          ...item,
+                          percentage: filteredBills.length
+                            ? (
+                                (item.value / filteredBills.length) *
+                                100
+                              ).toFixed(1)
+                            : 0,
+                        })),
+                      innerRadius: 40,
+                      outerRadius: 120,
+                      paddingAngle: 2,
+                      cornerRadius: 5,
+                      highlightScope: {
+                        faded: "global",
+                        highlighted: "item",
+                      },
+                      faded: { innerRadius: 30, additionalRadius: -10 },
+                    },
+                  ]}
+                  height={300}
+                  margin={{ top: 30, bottom: 50, left: 30, right: 30 }}
+                  slotProps={{
+                    legend: {
+                      direction: "row",
+                      position: { vertical: "bottom", horizontal: "middle" },
+                      padding: 0,
+                      itemMarkWidth: 15,
+                      itemMarkHeight: 15,
+                      labelStyle: { fontSize: { xs: 12, sm: 14 } },
                     },
                   }}
+                  onItemClick={(event, d) => setHoveredMethod(d.dataIndex)}
+                  sx={{
+                    "& .MuiChartsLegend-root": { marginTop: "20px" },
+                    "& .MuiPieArc-root": {
+                      transition: "all 0.3s",
+                      "&:hover": { opacity: 0.9, transform: "scale(1.05)" },
+                    },
+                    width: "100%",
+                  }}
+                />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ mb: 2, fontWeight: "bold" }}
                 >
-                  <MenuItem value="day">Daily</MenuItem>
-                  <MenuItem value="week">Weekly</MenuItem>
-                  <MenuItem value="month">Monthly</MenuItem>
-                  <MenuItem value="year">Yearly</MenuItem>
-                </Select>
-              </FormControl>
+                  Payment Method Breakdown
+                </Typography>
+                <Grid container spacing={1}>
+                  {filteredBills
+                    .reduce((acc, bill) => {
+                      const method = bill.paymentDetails?.method || "none";
+                      const existing = acc.find(
+                        (item) => item.label === method
+                      );
+                      if (existing) {
+                        existing.value += 1;
+                        existing.total += bill.total || 0;
+                      } else {
+                        acc.push({
+                          id: acc.length,
+                          value: 1,
+                          label: method,
+                          color:
+                            method === "cheque"
+                              ? "#3498db"
+                              : method === "cash"
+                              ? "#2ecc71"
+                              : method === "upi"
+                              ? "#e74c3c"
+                              : method === "netbanking"
+                              ? "#f1c40f"
+                              : "#95a5a6",
+                          total: bill.total || 0,
+                          percentage: 0,
+                        });
+                      }
+                      return acc;
+                    }, [])
+                    .map((method) => ({
+                      ...method,
+                      percentage: filteredBills.length
+                        ? ((method.value / filteredBills.length) * 100).toFixed(
+                            1
+                          )
+                        : 0,
+                    }))
+                    .map((method) => (
+                      <Grid item xs={12} key={method.id}>
+                        <Box
+                          sx={{
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor:
+                              hoveredMethod === method.id
+                                ? `${method.color}22`
+                                : "transparent",
+                            transition: "all 0.3s",
+                            "&:hover": {
+                              bgcolor: `${method.color}22`,
+                              cursor: "pointer",
+                            },
+                          }}
+                          onMouseEnter={() => setHoveredMethod(method.id)}
+                          onMouseLeave={() => setHoveredMethod(null)}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                bgcolor: method.color,
+                                borderRadius: "50%",
+                              }}
+                            />
+                            <Typography variant="body2" sx={{ flex: 1 }}>
+                              {method.label.charAt(0).toUpperCase() +
+                                method.label.slice(1)}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: "bold" }}
+                            >
+                              {method.percentage}%
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {method.value} transactions | ₹
+                            {method.total.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                </Grid>
+              </Box>
             </Box>
-            <PieChart
-              series={[
-                { data: paymentMethodData, innerRadius: 30, outerRadius: 100 },
-              ]}
-              height={300}
-              margin={{ top: 30, bottom: 50, left: 30, right: 30 }}
-              sx={{
-                "& .MuiChartsLegend-root": { marginTop: "20px" },
-                width: "100%",
-              }}
-            />
           </Paper>
         </Grid>
 
@@ -756,7 +1022,11 @@ const Home = () => {
             {turnoverData.length === getPeriods(turnoverTimePeriod).length ? (
               <LineChart
                 series={[
-                  { data: turnoverData, label: "Total Turnover", color: "#3498db" },
+                  {
+                    data: turnoverData,
+                    label: "Total Turnover",
+                    color: "#3498db",
+                  },
                 ]}
                 height={300}
                 xAxis={[
@@ -777,12 +1047,14 @@ const Home = () => {
                 }}
               />
             ) : (
-              <Typography color="error">Data mismatch: Please try again.</Typography>
+              <Typography color="error">
+                Data mismatch: Please try again.
+              </Typography>
             )}
           </Paper>
         </Grid>
 
-        {/* All Bills */}
+        {/* Recent Bills */}
         <Grid item xs={12}>
           <Paper
             elevation={3}
@@ -802,7 +1074,7 @@ const Home = () => {
                 fontSize: { xs: "1.25rem", sm: "1.5rem", md: "1.75rem" },
               }}
             >
-              All Bills
+              Recent Bills
             </Typography>
 
             {/* Summary Section */}
@@ -995,6 +1267,7 @@ const Home = () => {
                 borderRadius: 2,
                 maxWidth: "100%",
                 overflowX: "auto",
+                mb: 4,
               }}
             >
               <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
@@ -1053,7 +1326,6 @@ const Home = () => {
                       }}
                     >
                       Actions
-_
                     </TableCell>
                   </TableRow>
                 </TableHead>
