@@ -1,14 +1,6 @@
-import {
-  Page,
-  Text,
-  View,
-  Document,
-  StyleSheet,
-  Image,
-} from "@react-pdf/renderer";
+import { Page, Text, View, Document, StyleSheet, Image } from "@react-pdf/renderer";
 import { format } from "date-fns";
 import { numberToWords } from "../utils";
-import QRCode from "qrcode";
 
 const styles = StyleSheet.create({
   page: {
@@ -41,6 +33,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subtitle: {
+    fontWeight: "bold",
     fontSize: 10,
     color: "#5a6b7a",
     lineHeight: 1.4,
@@ -55,10 +48,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   invoiceDetail: {
+    fontWeight: "bold",
     fontSize: 10,
-    color: "#333333",
-    marginBottom: 4,
-    fontWeight: "normal",
+    color: "#5a6b7a",
+    lineHeight: 1.4,
+    marginTop: 2,
   },
   section: {
     marginBottom: 20,
@@ -148,18 +142,29 @@ const styles = StyleSheet.create({
   },
   signatureSection: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 50,
+    justifyContent: "space-around", // Changed to space-around for better spacing
+    marginTop: 40, // Reduced from 50 for a tighter layout
+    paddingHorizontal: 20, // Added to control spacing between cards
   },
   signatureBox: {
-    width: "48%",
+    width: "30%",
+    height: 68,
     textAlign: "center",
-    borderTop: "1px solid #2c3e50",
+    border: "1px solid #2c3e50",
+    borderRadius: 6,
+    backgroundColor: "#f8f9fa",
+    padding: 8,
     color: "#333333",
+  },
+  signatureImage: {
+    width: 100,
+    height: 30,
+    objectFit: "contain",
+    margin: "auto",
   },
   footer: {
     position: "absolute",
-    bottom: 10,
+    bottom: 60,
     left: 35,
     right: 35,
     fontSize: 9,
@@ -174,22 +179,19 @@ const styles = StyleSheet.create({
     width: "60%",
     textAlign: "left",
   },
-  qrCode: {
-    width: 50,
-    height: 50,
-    alignSelf: "flex-end",
-  },
 });
 
 // Function to calculate bill values, including roundOff
 const calculateBillValues = (bill) => {
-  // Ensure all amounts are numbers
+  // Ensure all amounts are numbers with fallback to 0
   const subtotal = parseFloat(bill.subtotal) || 0;
   const discountAmount = parseFloat(bill.discountAmount) || 0;
   const taxableAmount = parseFloat(bill.taxableAmount) || 0;
   const cgst = parseFloat(bill.cgst) || 0;
   const sgst = parseFloat(bill.sgst) || 0;
   const igst = parseFloat(bill.igst) || 0;
+  const discount = parseFloat(bill.discount) || 0;
+  const gstRate = parseFloat(bill.gstRate) || 0;
 
   // Calculate total before rounding
   const total = taxableAmount + cgst + sgst + igst;
@@ -202,9 +204,17 @@ const calculateBillValues = (bill) => {
 
   return {
     ...bill,
-    total: total.toFixed(2), // Ensure 2 decimal places
-    roundedTotal: roundedTotal.toFixed(2), // Ensure 2 decimal places
-    roundOff: roundOff.toFixed(2), // Ensure 2 decimal places
+    subtotal: subtotal.toFixed(2),
+    discount: discount.toFixed(2),
+    discountAmount: discountAmount.toFixed(2),
+    taxableAmount: taxableAmount.toFixed(2),
+    cgst: cgst.toFixed(2),
+    sgst: sgst.toFixed(2),
+    igst: igst.toFixed(2),
+    gstRate: gstRate.toFixed(2),
+    total: total.toFixed(2),
+    roundedTotal: roundedTotal.toFixed(2),
+    roundOff: roundOff.toFixed(2),
   };
 };
 
@@ -216,33 +226,20 @@ const formatAddress = (address) => {
     .join(", ");
 };
 
-// Function to generate QR code as base64
-// const generateQRCode = async (text) => {
-//   try {
-//     return await QRCode.toDataURL(text, {
-//       width: 50,
-//       margin: 1,
-//       errorCorrectionLevel: "Q",
-//     });
-//   } catch (error) {
-//     console.error("QR code generation failed:", error);
-//     return "https://via.placeholder.com/50?text=QR"; // Fallback placeholder
-//   }
-// };
-
-const BillPDF = ({ bill = {}, user = {} }) => {
+// Render a single bill page
+const BillPage = ({ bill, user }) => {
   // Calculate correct bill values
   const calculatedBill = calculateBillValues(bill);
 
   const safeBill = {
-    billId: calculatedBill.billId || calculatedBill._id || "N/A", // Use billId or _id
+    billId: calculatedBill.id || calculatedBill._id || "N/A",
     billNo: calculatedBill.billNo || "N/A",
     challanNo: calculatedBill.challanNo || "N/A",
-    date: calculatedBill.date || new Date(),
+    date: calculatedBill.date || new Date().toISOString(),
     partyDetails: calculatedBill.partyDetails || {},
     paymentMethod: calculatedBill.paymentMethod || "N/A",
     status: calculatedBill.status || "N/A",
-    items: calculatedBill.items || [],
+    items: Array.isArray(calculatedBill.items) ? calculatedBill.items : [],
     subtotal: parseFloat(calculatedBill.subtotal) || 0,
     discount: parseFloat(calculatedBill.discount) || 0,
     discountAmount: parseFloat(calculatedBill.discountAmount) || 0,
@@ -252,8 +249,7 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     sgst: parseFloat(calculatedBill.sgst) || 0,
     igst: parseFloat(calculatedBill.igst) || 0,
     total: parseFloat(calculatedBill.total) || 0,
-    roundedTotal:
-      parseFloat(calculatedBill.roundedTotal) || calculatedBill.total || 0,
+    roundedTotal: parseFloat(calculatedBill.roundedTotal) || 0,
     roundOff: parseFloat(calculatedBill.roundOff) || 0,
     notes: calculatedBill.notes || "",
   };
@@ -263,279 +259,301 @@ const BillPDF = ({ bill = {}, user = {} }) => {
     udyamNo: user.udyamNo || "N/A",
     companyName: user.companyName || "N/A",
     address: user.address || {},
+    mobileNo: user.mobileNo || "N/A",
     bankDetails: {
       bankName: user.bankDetails?.bankName || "N/A",
       accountName: user.bankDetails?.accountName || "N/A",
       accountNumber: user.bankDetails?.accountNumber || "N/A",
       ifscCode: user.bankDetails?.ifscCode || "N/A",
     },
+    signature: user.signature || "",
   };
 
-  // const qrCodeText = safeBill.billId !== "N/A"
-  //   ? `https://yourapp.com/bill/${safeBill.billId}` // Replace with your app's URL
-  //   : `Invoice: ${safeBill.billNo}`; // Fallback to bill number
+  return (
+    <Page size="A4" style={styles.page}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>{safeUser.companyName}</Text>
+          <Text style={styles.subtitle}>GSTIN: {safeUser.gstNo}</Text>
+          <Text style={styles.subtitle}>Contact No.: {safeUser.mobileNo}</Text>
+          <Text style={styles.subtitle}>
+            Address: {formatAddress(safeUser.address)}
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Text style={styles.invoiceTitle}>Tax Invoice</Text>
+          <Text style={styles.invoiceDetail}>
+            Invoice No.: {safeBill.billNo}
+          </Text>
+          <Text style={styles.invoiceDetail}>
+            Party Challan No.: {safeBill.challanNo}
+          </Text>
+          <Text style={styles.invoiceDetail}>
+            Date: {format(new Date(safeBill.date), "dd-MM-yyyy")}
+          </Text>
+          <Text style={styles.invoiceDetail}>
+            UDYAM No.: {safeUser.udyamNo}
+          </Text>
+        </View>
+      </View>
 
-  // const qrCodeUrl = qrCodeText.includes("N/A")
-  //   ? "https://via.placeholder.com/50?text=QR"
-  //   : qrCodeText; // Temporary, will be replaced with base64 in parent
+      <View style={styles.section}>
+        <View style={styles.row}>
+          <View>
+            <Text
+              style={{
+                fontWeight: "bold",
+                marginBottom: 5,
+                color: "#2c3e50",
+              }}
+            >
+              Billed To:
+            </Text>
+            <Text>{safeBill.partyDetails.companyName || "N/A"}</Text>
+            <Text>GSTIN: {safeBill.partyDetails.gstNo || "N/A"}</Text>
+            <Text>Mobile: {safeBill.partyDetails.mobileNo || "N/A"}</Text>
+            <Text>Address: {formatAddress(safeBill.partyDetails)}</Text>
+          </View>
+          <View>
+            <Text
+              style={{
+                fontWeight: "bold",
+                marginBottom: 5,
+                color: "#2c3e50",
+              }}
+            >
+              Payment Details:
+            </Text>
+            <Text>Method: {bill.paymentDetails?.method
+                    ? bill.paymentDetails.method.toUpperCase()
+                    : "N/A"}</Text>
+            <Text>Status: {safeBill.status.toUpperCase()}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.table}>
+        <View style={styles.tableRow}>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>No.</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Item</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>HSN</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Qty</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Price</Text>
+          </View>
+          <View style={styles.tableColHeader}>
+            <Text style={styles.tableCellHeader}>Amount</Text>
+          </View>
+        </View>
+        {safeBill.items.map((item, index) => (
+          <View
+            style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlternate}
+            key={index}
+          >
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{index + 1}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.name || "N/A"}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.hsn || "N/A"}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>{item.quantity || 0}</Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>
+                {(parseFloat(item.price) || 0).toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.tableCol}>
+              <Text style={styles.tableCell}>
+                {(
+                  (parseFloat(item.quantity) || 0) *
+                  (parseFloat(item.price) || 0)
+                ).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.amountSection}>
+        <View style={styles.amountBox}>
+          {safeBill.notes && (
+            <View style={styles.notesBox}>
+              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
+                Additional Details:
+              </Text>
+              <Text style={{ fontSize: 9, marginTop: 5 }}>
+                {safeBill.notes}
+              </Text>
+            </View>
+          )}
+          {(safeUser.bankDetails.bankName !== "N/A" ||
+            safeUser.bankDetails.accountName !== "N/A" ||
+            safeUser.bankDetails.accountNumber !== "N/A" ||
+            safeUser.bankDetails.ifscCode !== "N/A") && (
+            <View style={styles.bankDetailsBox}>
+              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
+                Bank Details:
+              </Text>
+              {safeUser.bankDetails.bankName !== "N/A" && (
+                <Text style={{ fontSize: 10, marginTop: 5 }}>
+                  Bank Name: {safeUser.bankDetails.bankName}
+                </Text>
+              )}
+              {safeUser.bankDetails.accountName !== "N/A" && (
+                <Text style={{ fontSize: 10, marginTop: 5 }}>
+                  Account Name: {safeUser.bankDetails.accountName}
+                </Text>
+              )}
+              {safeUser.bankDetails.accountNumber !== "N/A" && (
+                <Text style={{ fontSize: 10, marginTop: 5 }}>
+                  Account Number: {safeUser.bankDetails.accountNumber}
+                </Text>
+              )}
+              {safeUser.bankDetails.ifscCode !== "N/A" && (
+                <Text style={{ fontSize: 10, marginTop: 5 }}>
+                  IFSC Code: {safeUser.bankDetails.ifscCode}
+                </Text>
+              )}
+            </View>
+          )}
+          <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
+            Amount in Words:
+          </Text>
+          <Text style={{ fontSize: 12, marginTop: 5 }}>
+            {numberToWords(safeBill.roundedTotal)}
+          </Text>
+        </View>
+        <View style={styles.amountBox}>
+          <View style={styles.row}>
+            <Text>Subtotal:</Text>
+            <Text>{safeBill.subtotal.toFixed(2)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text>Discount ({safeBill.discount}%):</Text>
+            <Text>{safeBill.discountAmount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text>Taxable Amount:</Text>
+            <Text>{safeBill.taxableAmount.toFixed(2)}</Text>
+          </View>
+          {safeBill.cgst > 0 && (
+            <View style={styles.row}>
+              <Text>CGST ({safeBill.gstRate / 2}%):</Text>
+              <Text>{safeBill.cgst.toFixed(2)}</Text>
+            </View>
+          )}
+          {safeBill.sgst > 0 && (
+            <View style={styles.row}>
+              <Text>SGST ({safeBill.gstRate / 2}%):</Text>
+              <Text>{safeBill.sgst.toFixed(2)}</Text>
+            </View>
+          )}
+          {safeBill.igst > 0 && (
+            <View style={styles.row}>
+              <Text>IGST ({safeBill.gstRate}%):</Text>
+              <Text>{safeBill.igst.toFixed(2)}</Text>
+            </View>
+          )}
+          <View style={styles.row}>
+            <Text>Round Off:</Text>
+            <Text>
+              {safeBill.roundOff === 0
+                ? "0.00"
+                : Math.abs(safeBill.roundOff).toFixed(2)}
+            </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>Total:</Text>
+            <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
+              {safeBill.roundedTotal.toFixed(2)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.signatureSection}>
+        <View style={styles.signatureBox}>
+          <Text style={{ fontSize: 9, marginTop: 4, marginBottom: 4 }}>
+            Receiver's Signature
+          </Text>
+        </View>
+        <View style={styles.signatureBox}>
+          <Text style={{ fontSize: 9, marginTop: 4 }}>
+            For {safeUser.companyName || "N/A"}
+          </Text>
+          {safeUser.signature && safeUser.signature.startsWith("data:image/") ? (
+            <Image src={safeUser.signature} style={styles.signatureImage} />
+          ) : (
+            <Text style={{ fontSize: 9, marginTop: 6, marginBottom: 4, color: "#666666" }}>
+              N/A
+            </Text>
+          )}
+          <Text style={{ fontSize: 9, marginBottom: 4 }}>Authorized Signatory</Text>
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <View style={styles.termsSection}>
+          <Text
+            style={{ fontWeight: "bold", color: "#2c3e50", marginBottom: 5 }}
+          >
+            Terms & Conditions:
+          </Text>
+          <Text style={{ fontSize: 8, marginBottom: 2 }}>
+            1) Payment to be made A/c Payee's Cheque only.
+          </Text>
+          <Text style={{ fontSize: 8, marginBottom: 2 }}>
+            2) We are not responsible for any loss during transit.
+          </Text>
+          <Text style={{ fontSize: 8, marginBottom: 2 }}>
+            3) Interest @ 18% p.a will be charged on amount remaining unpaid
+            from the due date.
+          </Text>
+          <Text style={{ fontSize: 8 }}>4) Subject to Surat jurisdiction.</Text>
+        </View>
+        <View>
+          <Text style={{ textAlign: "right", marginBottom: 5 }}>
+            Generated by: {format(new Date(), "dd-MM-yyyy")}
+          </Text>
+        </View>
+      </View>
+    </Page>
+  );
+};
+
+const BillPDF = ({ bill, bills = [], user = {} }) => {
+  // Handle single bill or multiple bills
+  const billsToRender = bill ? [bill] : Array.isArray(bills) ? bills : [];
+
+  if (billsToRender.length === 0) {
+    console.warn("No valid bills provided to BillPDF");
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text>No bills available to display.</Text>
+        </Page>
+      </Document>
+    );
+  }
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.title}>{safeUser.companyName}</Text>
-            <Text style={styles.subtitle}>GSTIN: {safeUser.gstNo}</Text>
-            <Text style={styles.subtitle}>UDYAM No.: {safeUser.udyamNo}</Text>
-            <Text style={styles.subtitle}>
-              Address: {formatAddress(safeUser.address)}
-            </Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.invoiceTitle}>Tax Invoice</Text>
-            <Text style={styles.invoiceDetail}>
-              Invoice No.: {safeBill.billNo}
-            </Text>
-            <Text style={styles.invoiceDetail}>
-              Party Challan No.: {safeBill.challanNo}
-            </Text>
-            <Text style={styles.invoiceDetail}>
-              Date: {format(new Date(safeBill.date), "dd-MM-yyyy")}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.row}>
-            <View>
-              <Text
-                style={{
-                  fontWeight: "bold",
-                  marginBottom: 5,
-                  color: "#2c3e50",
-                }}
-              >
-                Billed To:
-              </Text>
-              <Text>{safeBill.partyDetails.companyName || "N/A"}</Text>
-              <Text>GSTIN: {safeBill.partyDetails.gstNo || "N/A"}</Text>
-              <Text>Mobile: {safeBill.partyDetails.mobileNo || "N/A"}</Text>
-              <Text>Address: {formatAddress(safeBill.partyDetails)}</Text>
-            </View>
-            <View>
-              <Text
-                style={{
-                  fontWeight: "bold",
-                  marginBottom: 5,
-                  color: "#2c3e50",
-                }}
-              >
-                Payment Details:
-              </Text>
-              <Text>
-                <Text style={styles.bold}>Method:</Text>{" "}
-                {bill.paymentDetails?.method
-                  ? bill.paymentDetails.method.toUpperCase()
-                  : "N/A"}
-              </Text>
-              <Text>Status: {safeBill.status.toUpperCase()}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.table}>
-          <View style={styles.tableRow}>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>No.</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Item</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>HSN</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Qty</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Price</Text>
-            </View>
-            <View style={styles.tableColHeader}>
-              <Text style={styles.tableCellHeader}>Amount</Text>
-            </View>
-          </View>
-          {safeBill.items.map((item, index) => (
-            <View
-              style={
-                index % 2 === 0 ? styles.tableRow : styles.tableRowAlternate
-              }
-              key={index}
-            >
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>{index + 1}</Text>
-              </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>{item.name || "N/A"}</Text>
-              </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>{item.hsn || "N/A"}</Text>
-              </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>{item.quantity || 0}</Text>
-              </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>
-                  {(item.price || 0).toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.tableCol}>
-                <Text style={styles.tableCell}>
-                  {((item.quantity || 0) * (item.price || 0)).toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.amountSection}>
-          <View style={styles.amountBox}>
-            {safeBill.notes && (
-              <View style={styles.notesBox}>
-                <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                  Additional Details:
-                </Text>
-                <Text style={{ fontSize: 9, marginTop: 5 }}>
-                  {safeBill.notes}
-                </Text>
-              </View>
-            )}
-            {(safeUser.bankDetails.bankName !== "N/A" ||
-              safeUser.bankDetails.accountName !== "N/A" ||
-              safeUser.bankDetails.accountNumber !== "N/A" ||
-              safeUser.bankDetails.ifscCode !== "N/A") && (
-              <View style={styles.bankDetailsBox}>
-                <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                  Bank Details:
-                </Text>
-                {safeUser.bankDetails.bankName !== "N/A" && (
-                  <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Bank Name: {safeUser.bankDetails.bankName}
-                  </Text>
-                )}
-                {safeUser.bankDetails.accountName !== "N/A" && (
-                  <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Account Name: {safeUser.bankDetails.accountName}
-                  </Text>
-                )}
-                {safeUser.bankDetails.accountNumber !== "N/A" && (
-                  <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    Account Number: {safeUser.bankDetails.accountNumber}
-                  </Text>
-                )}
-                {safeUser.bankDetails.ifscCode !== "N/A" && (
-                  <Text style={{ fontSize: 10, marginTop: 5 }}>
-                    IFSC Code: {safeUser.bankDetails.ifscCode}
-                  </Text>
-                )}
-              </View>
-            )}
-            <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-              Amount in Words:
-            </Text>
-            <Text style={{ fontSize: 12, marginTop: 5 }}>
-              {numberToWords(parseFloat(safeBill.roundedTotal))}
-            </Text>
-          </View>
-          <View style={styles.amountBox}>
-            <View style={styles.row}>
-              <Text>Subtotal:</Text>
-              <Text>{safeBill.subtotal.toFixed(2)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text>Discount ({safeBill.discount}%):</Text>
-              <Text>{safeBill.discountAmount.toFixed(2)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text>Taxable Amount:</Text>
-              <Text>{safeBill.taxableAmount.toFixed(2)}</Text>
-            </View>
-            {safeBill.cgst > 0 && (
-              <View style={styles.row}>
-                <Text>CGST ({safeBill.gstRate / 2}%):</Text>
-                <Text>{safeBill.cgst.toFixed(2)}</Text>
-              </View>
-            )}
-            {safeBill.sgst > 0 && (
-              <View style={styles.row}>
-                <Text>SGST ({safeBill.gstRate / 2}%):</Text>
-                <Text>{safeBill.sgst.toFixed(2)}</Text>
-              </View>
-            )}
-            {safeBill.igst > 0 && (
-              <View style={styles.row}>
-                <Text>IGST ({safeBill.gstRate}%):</Text>
-                <Text>{safeBill.igst.toFixed(2)}</Text>
-              </View>
-            )}
-            <View style={styles.row}>
-              <Text>Round Off:</Text>
-              <Text>
-                {isNaN(safeBill.roundOff) || safeBill.roundOff === 0
-                  ? "0.00"
-                  : Math.abs(safeBill.roundOff).toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                Total:
-              </Text>
-              <Text style={{ fontWeight: "bold", color: "#2c3e50" }}>
-                {safeBill.roundedTotal.toFixed(2)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.signatureSection}>
-          <View style={styles.signatureBox}>
-            <Text style={{ marginTop: 12 }}>Receiver's Signature</Text>
-          </View>
-          <View style={styles.signatureBox}>
-            <Text style={{ marginTop: 12 }}>
-              For {safeUser.companyName || "N/A"} Authorized Signatory
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.termsSection}>
-            <Text
-              style={{ fontWeight: "bold", color: "#2c3e50", marginBottom: 5 }}
-            >
-              Terms & Conditions:
-            </Text>
-            <Text style={{ fontSize: 8, marginBottom: 2 }}>
-              1) Payment to be made A/c Payee's Cheque only.
-            </Text>
-            <Text style={{ fontSize: 8, marginBottom: 2 }}>
-              2) We are not responsible for any loss during transit.
-            </Text>
-            <Text style={{ fontSize: 8, marginBottom: 2 }}>
-              3) Interest @ 18% p.a will be charged on amount remaining unpaid
-              from the due date.
-            </Text>
-            <Text style={{ fontSize: 8 }}>
-              4) Subject to Surat jurisdiction.
-            </Text>
-          </View>
-          <View>
-            <Text style={{ textAlign: "right", marginBottom: 5 }}>
-              Generated by: {format(new Date(), "dd-MM-yyyy")}
-            </Text>
-            {/* <Image src={qrCodeUrl} style={styles.qrCode} /> */}
-          </View>
-        </View>
-      </Page>
+      {billsToRender.map((singleBill, index) => (
+        <BillPage key={singleBill.id || index} bill={singleBill} user={user} />
+      ))}
     </Document>
   );
 };

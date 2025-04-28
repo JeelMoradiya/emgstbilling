@@ -842,7 +842,7 @@ const Home = () => {
                     },
                   ]}
                   height={300}
-                  margin={{ top: 30, bottom: 50, left: 30, right: 30 }}
+                  margin={{ top: 20, bottom: 40, left: 20, right: 20 }}
                   slotProps={{
                     legend: {
                       direction: "row",
@@ -855,7 +855,7 @@ const Home = () => {
                   }}
                   onItemClick={(event, d) => setHoveredMethod(d.dataIndex)}
                   sx={{
-                    "& .MuiChartsLegend-root": { marginTop: "20px" },
+                    "& .MuiChartsLegend-root": { marginTop: "10px" },
                     "& .MuiPieArc-root": {
                       transition: "all 0.3s",
                       "&:hover": { opacity: 0.9, transform: "scale(1.05)" },
@@ -867,7 +867,7 @@ const Home = () => {
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: "bold" }}
+                  sx={{ mb: 1, fontWeight: "bold" }}
                 >
                   Payment Method Breakdown
                 </Typography>
@@ -938,8 +938,8 @@ const Home = () => {
                           >
                             <Box
                               sx={{
-                                width: 12,
-                                height: 12,
+                                width: 9,
+                                height: 9,
                                 bgcolor: method.color,
                                 borderRadius: "50%",
                               }}
@@ -1242,6 +1242,7 @@ const Home = () => {
                     <MenuItem value="Pending">Pending</MenuItem>
                   </Select>
                 </FormControl>
+
                 <Button
                   variant="contained"
                   color="primary"

@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
-  Typography, // Re-added Typography import
+  Typography,
   Button,
   Container,
   Avatar,
@@ -91,6 +91,7 @@ const Navbar = () => {
     { name: "Home", path: "/" },
     { name: "Parties", onClick: handlePartyMenu },
     { name: "Invoices", onClick: handleInvoiceMenu },
+    // { name: "Payments", path: "/payments" },
   ];
 
   return (
@@ -181,22 +182,22 @@ const Navbar = () => {
                     timeout="auto"
                     unmountOnExit
                   >
-                    <ListItem disablePadding>
-                      <ListItemButton
-                        onClick={() => {
-                          navigate("/add-party");
-                          handleClose();
-                        }}
-                        sx={{
-                          pl: 4,
-                          color: "#ecf0f1",
-                          "&:hover": { bgcolor: "#2c3e50" },
-                        }}
-                      >
-                        Party Manage
-                      </ListItemButton>
-                    </ListItem>
                     <List component="div" disablePadding>
+                      <ListItem disablePadding>
+                        <ListItemButton
+                          onClick={() => {
+                            navigate("/add-party");
+                            handleClose();
+                          }}
+                          sx={{
+                            pl: 4,
+                            color: "#ecf0f1",
+                            "&:hover": { bgcolor: "#2c3e50" },
+                          }}
+                        >
+                          Party Manage
+                        </ListItemButton>
+                      </ListItem>
                       <ListItem disablePadding>
                         <ListItemButton
                           onClick={() => {
@@ -233,6 +234,21 @@ const Navbar = () => {
                           }}
                         >
                           Add Invoice
+                        </ListItemButton>
+                      </ListItem>
+                      <ListItem disablePadding>
+                        <ListItemButton
+                          onClick={() => {
+                            navigate("/challan-book");
+                            handleClose();
+                          }}
+                          sx={{
+                            pl: 4,
+                            color: "#ecf0f1",
+                            "&:hover": { bgcolor: "#2c3e50" },
+                          }}
+                        >
+                          Challan Book
                         </ListItemButton>
                       </ListItem>
                     </List>
@@ -355,7 +371,11 @@ const Navbar = () => {
                   <Box key={item.name} sx={{ position: "relative" }}>
                     <Button
                       color="inherit"
-                      endIcon={item.name !== "Home" ? <ArrowDownIcon /> : null}
+                      endIcon={
+                        item.name === "Parties" || item.name === "Invoices"
+                          ? <ArrowDownIcon />
+                          : null
+                      }
                       onClick={
                         item.onClick ||
                         (() => {
@@ -518,6 +538,18 @@ const Navbar = () => {
                   <ReceiptIcon sx={{ color: "#ecf0f1" }} />
                 </ListItemIcon>
                 Add Invoice
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  navigate("/challan-book");
+                  handleClose();
+                }}
+                sx={{ fontSize: "1rem", py: 1, px: 2 }}
+              >
+                <ListItemIcon>
+                  <ReceiptIcon sx={{ color: "#ecf0f1" }} />
+                </ListItemIcon>
+                Challan Book
               </MenuItem>
             </Menu>
           </Box>

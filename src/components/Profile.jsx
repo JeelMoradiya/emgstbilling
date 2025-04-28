@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Container,
   Paper,
@@ -17,6 +17,7 @@ import {
   Tab,
   IconButton,
   Tooltip,
+  useMediaQuery, // Import useMediaQuery
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -31,11 +32,13 @@ import {
 import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import SignatureCanvas from "react-signature-canvas";
 
 const Profile = () => {
   const { currentUser, userProfile, updateUserProfile, loading } = useAuth();
   const theme = useTheme();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Detect mobile screen size
   const [tabValue, setTabValue] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -61,6 +64,7 @@ const Profile = () => {
       accountNumber: "",
       ifscCode: "",
     },
+    signature: "",
   });
   const [error, setError] = useState("");
   const [snackbar, setSnackbar] = useState({
@@ -68,6 +72,7 @@ const Profile = () => {
     message: "",
     severity: "success",
   });
+  const sigCanvas = useRef(null);
 
   const stateCityMap = {
     Gujarat: {
@@ -168,6 +173,7 @@ const Profile = () => {
           accountNumber: userProfile.bankDetails?.accountNumber || "",
           ifscCode: userProfile.bankDetails?.ifscCode || "",
         },
+        signature: userProfile.signature || "",
       });
     }
   }, [userProfile]);
@@ -190,7 +196,9 @@ const Profile = () => {
       "bankDetails.accountName",
     ];
 
-    const formattedValue = upperCaseFields.includes(name) ? value.toUpperCase() : value;
+    const formattedValue = upperCaseFields.includes(name)
+      ? value.toUpperCase()
+      : value;
 
     if (name.includes("address.")) {
       const addressField = name.split(".")[1];
@@ -242,13 +250,16 @@ const Profile = () => {
         accountNumber: userProfile?.bankDetails?.accountNumber || "",
         ifscCode: userProfile?.bankDetails?.ifscCode || "",
       },
+      signature: userProfile?.signature || "",
     });
+    if (sigCanvas.current) {
+      sigCanvas.current.clear();
+    }
     setIsEditing(false);
     setError("");
   };
 
   const validateForm = () => {
-    // User Information
     if (!formData.fullName) {
       setError("Full Name is required");
       return false;
@@ -262,7 +273,6 @@ const Profile = () => {
       return false;
     }
 
-    // GST Information
     if (
       formData.gstNo &&
       !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
@@ -275,15 +285,17 @@ const Profile = () => {
     if (
       formData.gstNo &&
       formData.address.state &&
-      formData.gstNo.slice(0, 2) !== stateCityMap[formData.address.state].gstCode
+      formData.gstNo.slice(0, 2) !==
+        stateCityMap[formData.address.state].gstCode
     ) {
       setError(
-        `GST number must start with state code ${stateCityMap[formData.address.state].gstCode} for ${formData.address.state}`
+        `GST number must start with state code ${
+          stateCityMap[formData.address.state].gstCode
+        } for ${formData.address.state}`
       );
       return false;
     }
 
-    // UDYAM Number Validation
     if (formData.udyamNo) {
       const udyamRegex = /^[A-Z]{2}-[0-9]{2}-[0-9]{7}$/;
       if (!udyamRegex.test(formData.udyamNo)) {
@@ -291,8 +303,9 @@ const Profile = () => {
         return false;
       }
       if (formData.address.state) {
-        const expectedUdyamCode = stateCityMap[formData.address.state].udyamCode;
-        const udyamStateCode = formData.udyamNo.split("-")[0]; // Extract state code (e.g., GJ)
+        const expectedUdyamCode =
+          stateCityMap[formData.address.state].udyamCode;
+        const udyamStateCode = formData.udyamNo.split("-")[0];
         if (udyamStateCode !== expectedUdyamCode) {
           setError(
             `UDYAM number state code must be ${expectedUdyamCode} for ${formData.address.state}`
@@ -302,7 +315,6 @@ const Profile = () => {
       }
     }
 
-    // Address Information
     if (
       !formData.address.plotHouseNo ||
       !formData.address.line1 ||
@@ -319,7 +331,6 @@ const Profile = () => {
       return false;
     }
 
-    // Bank Details (optional, but validate if provided)
     if (
       formData.bankDetails.bankName ||
       formData.bankDetails.accountName ||
@@ -353,6 +364,20 @@ const Profile = () => {
     return true;
   };
 
+  const handleClearSignature = () => {
+    if (sigCanvas.current) {
+      sigCanvas.current.clear();
+      setFormData((prev) => ({ ...prev, signature: "" }));
+    }
+  };
+
+  const handleSaveSignature = () => {
+    if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
+      const signatureData = sigCanvas.current.toDataURL("image/png");
+      setFormData((prev) => ({ ...prev, signature: signatureData }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -368,6 +393,7 @@ const Profile = () => {
         udyamNo: formData.udyamNo,
         address: formData.address,
         bankDetails: formData.bankDetails,
+        signature: formData.signature,
       };
       await updateUserProfile(updatedData);
       setSnackbar({
@@ -401,7 +427,13 @@ const Profile = () => {
     return (
       <Container
         maxWidth="lg"
-        sx={{ mt: 4, display: "flex", justifyContent: "center", bgcolor: "white", minHeight: "100vh" }}
+        sx={{
+          mt: 4,
+          display: "flex",
+          justifyContent: "center",
+          bgcolor: "white",
+          minHeight: "100vh",
+        }}
       >
         <CircularProgress />
       </Container>
@@ -524,10 +556,31 @@ const Profile = () => {
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab label="Personal" icon={<PersonIcon />} iconPosition="start" />
-            <Tab label="Business" icon={<BusinessIcon />} iconPosition="start" />
-            <Tab label="Address" icon={<LocationIcon />} iconPosition="start" />
-            <Tab label="Bank" icon={<BankIcon />} iconPosition="start" />
+            <Tab
+              label={isMobile ? "" : "Personal"} // Hide label on mobile
+              icon={<PersonIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label={isMobile ? "" : "Business"}
+              icon={<BusinessIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label={isMobile ? "" : "Address"}
+              icon={<LocationIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label={isMobile ? "" : "Bank"}
+              icon={<BankIcon />}
+              iconPosition="start"
+            />
+            <Tab
+              label={isMobile ? "" : "Signature"}
+              icon={<EditIcon />}
+              iconPosition="start"
+            />
           </Tabs>
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -540,7 +593,10 @@ const Profile = () => {
                 <Typography
                   variant="h6"
                   gutterBottom
-                  sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#2c3e50" }}
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                    color: "#2c3e50",
+                  }}
                 >
                   Personal Information
                 </Typography>
@@ -557,7 +613,9 @@ const Profile = () => {
                       variant="outlined"
                       size="small"
                       InputProps={{
-                        startAdornment: isEditing && <PersonIcon color="action" sx={{ mr: 1 }} />,
+                        startAdornment: isEditing && (
+                          <PersonIcon color="action" sx={{ mr: 1 }} />
+                        ),
                       }}
                       sx={{
                         "& .MuiInputBase-input": {
@@ -616,7 +674,10 @@ const Profile = () => {
                 <Typography
                   variant="h6"
                   gutterBottom
-                  sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#2c3e50" }}
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                    color: "#2c3e50",
+                  }}
                 >
                   Business Information
                 </Typography>
@@ -632,7 +693,9 @@ const Profile = () => {
                       variant="outlined"
                       size="small"
                       InputProps={{
-                        startAdornment: isEditing && <BusinessIcon color="action" sx={{ mr: 1 }} />,
+                        startAdornment: isEditing && (
+                          <BusinessIcon color="action" sx={{ mr: 1 }} />
+                        ),
                       }}
                       sx={{
                         "& .MuiInputBase-input": {
@@ -654,7 +717,9 @@ const Profile = () => {
                       size="small"
                       helperText={
                         formData.address.state &&
-                        `GST should start with ${stateCityMap[formData.address.state].gstCode} for ${formData.address.state}`
+                        `GST should start with ${
+                          stateCityMap[formData.address.state].gstCode
+                        } for ${formData.address.state}`
                       }
                       sx={{
                         "& .MuiInputBase-input": {
@@ -694,7 +759,9 @@ const Profile = () => {
                       size="small"
                       helperText={
                         formData.address.state
-                          ? `Format: ${stateCityMap[formData.address.state].udyamCode}-YY-NNNNNNN`
+                          ? `Format: ${
+                              stateCityMap[formData.address.state].udyamCode
+                            }-YY-NNNNNNN`
                           : "Format: XX-YY-NNNNNNN"
                       }
                       sx={{
@@ -718,7 +785,10 @@ const Profile = () => {
                 <Typography
                   variant="h6"
                   gutterBottom
-                  sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#2c3e50" }}
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                    color: "#2c3e50",
+                  }}
                 >
                   Address Information
                 </Typography>
@@ -735,7 +805,9 @@ const Profile = () => {
                       variant="outlined"
                       size="small"
                       InputProps={{
-                        startAdornment: isEditing && <LocationIcon color="action" sx={{ mr: 1 }} />,
+                        startAdornment: isEditing && (
+                          <LocationIcon color="action" sx={{ mr: 1 }} />
+                        ),
                       }}
                       sx={{
                         "& .MuiInputBase-input": {
@@ -851,11 +923,13 @@ const Profile = () => {
                     >
                       <option value="">Select City</option>
                       {formData.address.state &&
-                        stateCityMap[formData.address.state].cities.map((city) => (
-                          <option key={city} value={city}>
-                            {city}
-                          </option>
-                        ))}
+                        stateCityMap[formData.address.state].cities.map(
+                          (city) => (
+                            <option key={city} value={city}>
+                              {city}
+                            </option>
+                          )
+                        )}
                     </TextField>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -890,7 +964,10 @@ const Profile = () => {
                 <Typography
                   variant="h6"
                   gutterBottom
-                  sx={{ fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#2c3e50" }}
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                    color: "#2c3e50",
+                  }}
                 >
                   Bank Details (Optional)
                 </Typography>
@@ -906,7 +983,9 @@ const Profile = () => {
                       variant="outlined"
                       size="small"
                       InputProps={{
-                        startAdornment: isEditing && <BankIcon color="action" sx={{ mr: 1 }} />,
+                        startAdornment: isEditing && (
+                          <BankIcon color="action" sx={{ mr: 1 }} />
+                        ),
                       }}
                       sx={{
                         "& .MuiInputBase-input": {
@@ -970,6 +1049,86 @@ const Profile = () => {
                         "& .MuiInputLabel-root": { color: "#2c3e50" },
                       }}
                     />
+                  </Grid>
+                </Grid>
+              </motion.div>
+            )}
+
+            {tabValue === 4 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.25rem" },
+                    color: "#2c3e50",
+                  }}
+                >
+                  Handwritten Signature
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    {isEditing ? (
+                      <>
+                        <Box
+                          sx={{
+                            border: "1px solid #2c3e50",
+                            borderRadius: 1,
+                            bgcolor: "#f5f5f5",
+                            width: { xs: "100%", sm: 300 },
+                            height: 150,
+                          }}
+                        >
+                          <SignatureCanvas
+                            ref={sigCanvas}
+                            penColor="black"
+                            canvasProps={{
+                              width: 300,
+                              height: 150,
+                              className: "signature-canvas",
+                            }}
+                            onEnd={handleSaveSignature}
+                          />
+                        </Box>
+                        <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
+                          <Button
+                            variant="outlined"
+                            onClick={handleClearSignature}
+                            sx={{
+                              color: "#2c3e50",
+                              borderColor: "#2c3e50",
+                            }}
+                          >
+                            Clear Signature
+                          </Button>
+                        </Box>
+                      </>
+                    ) : formData.signature ? (
+                      <img
+                        src={formData.signature}
+                        alt="Signature"
+                        style={{
+                          maxWidth: 300,
+                          height: 150,
+                          border: "1px solid #2c3e50",
+                          borderRadius: 4,
+                          objectFit: "contain",
+                        }}
+                      />
+                    ) : (
+                      <Typography
+                        sx={{
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                          color: "#2c3e50",
+                        }}
+                      >
+                        No signature provided
+                      </Typography>
+                    )}
                   </Grid>
                 </Grid>
               </motion.div>
