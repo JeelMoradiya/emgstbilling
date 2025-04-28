@@ -57,11 +57,13 @@ import {
   Download,
   Print,
   Share,
+  Receipt, // Icon for Convert to Sales Bill
 } from "@mui/icons-material";
 import { numberToWords } from "../utils";
 import logo from "../assets/logo.gif";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import ChallanPDF from "./ChallanPDF";
+import ChallanListPDF from "./ChallanListPDF"; // Import the new ChallanListPDF
 
 const ChallanBook = () => {
   const theme = useTheme();
@@ -441,8 +443,8 @@ const ChallanBook = () => {
       const taxableAmount = subtotal - discountAmount;
       const isInterState = challan.partyDetails.state !== userState;
 
-      // Default GST rate (can be customized based on your requirements)
-      const gstRate = 5; // Example: 18% GST; adjust as needed
+      // GST calculation (18% GST as an example)
+      const gstRate = 18;
       const cgst = isInterState ? 0 : taxableAmount * (gstRate / 100 / 2);
       const sgst = isInterState ? 0 : taxableAmount * (gstRate / 100 / 2);
       const igst = isInterState ? taxableAmount * (gstRate / 100) : 0;
@@ -496,6 +498,94 @@ const ChallanBook = () => {
     }
   };
 
+  // New function to handle conversion of selected challans to sales bills
+  const handleConvertSelectedToSalesBills = async () => {
+    if (selectedChallans.length === 0) {
+      setSnackbar({
+        open: true,
+        message: "Please select at least one challan to convert",
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      const billQuery = query(
+        collection(db, "bills"),
+        where("createdBy", "==", currentUser.uid)
+      );
+      const billSnapshot = await getDocs(billQuery);
+      let nextBillNo = billSnapshot.empty
+        ? 1
+        : Math.max(...billSnapshot.docs.map((doc) => doc.data().billNo)) + 1;
+
+      for (const challanId of selectedChallans) {
+        const challan = challans.find((c) => c.id === challanId);
+        if (!challan) continue;
+
+        const subtotal = challan.items.reduce(
+          (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0),
+          0
+        );
+        const discountAmount = subtotal * (challan.discount / 100);
+        const taxableAmount = subtotal - discountAmount;
+        const isInterState = challan.partyDetails.state !== userState;
+
+        const gstRate = 18; // 18% GST
+        const cgst = isInterState ? 0 : taxableAmount * (gstRate / 100 / 2);
+        const sgst = isInterState ? 0 : taxableAmount * (gstRate / 100 / 2);
+        const igst = isInterState ? taxableAmount * (gstRate / 100) : 0;
+        const total = taxableAmount + (isInterState ? igst : cgst + sgst);
+        const roundedTotal = Number(Math.round(total)).toFixed(2);
+        const roundOff = Number(roundedTotal - total).toFixed(2);
+
+        const billData = {
+          billNo: nextBillNo,
+          challanNo: challan.challanNo.toString(),
+          date: challan.date,
+          partyId: challan.partyId,
+          items: challan.items,
+          subtotal,
+          discount: challan.discount,
+          discountAmount,
+          taxableAmount,
+          cgst,
+          sgst,
+          igst,
+          total,
+          roundedTotal,
+          roundOff,
+          partyDetails: challan.partyDetails,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.uid,
+          status: "pending",
+          paymentMethod: "cheque",
+          gstRate,
+        };
+
+        await addDoc(collection(db, "bills"), billData);
+        nextBillNo++;
+      }
+
+      const counterRef = doc(db, "billCounters", `${currentUser.uid}`);
+      await setDoc(counterRef, { lastBillNo: nextBillNo - 1 }, { merge: true });
+
+      setSnackbar({
+        open: true,
+        message: `Selected challans converted to sales bills successfully`,
+        severity: "success",
+      });
+      setSelectedChallans([]); // Reset selection
+    } catch (error) {
+      console.error("Error converting selected challans to sales bills:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to convert selected challans to sales bills: " + error.message,
+        severity: "error",
+      });
+    }
+  };
+
   const handlePrint = async (challan) => {
     try {
       const pdfDoc = <ChallanPDF challans={[challan]} user={userData} />;
@@ -520,7 +610,7 @@ const ChallanBook = () => {
   const handlePrintSelected = async () => {
     try {
       const pdfDoc = (
-        <ChallanPDF
+        <ChallanListPDF
           challans={challans.filter((challan) => selectedChallans.includes(challan.id))}
           user={userData}
         />
@@ -550,6 +640,47 @@ const ChallanBook = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
     handleMenuClose();
+  };
+
+  // New function to share selected challans as PDF via WhatsApp
+  const handleShareSelectedPDF = async () => {
+    if (selectedChallans.length === 0) {
+      setSnackbar({
+        open: true,
+        message: "Please select at least one challan to share",
+        severity: "error",
+      });
+      return;
+    }
+
+    try {
+      const pdfDoc = (
+        <ChallanListPDF
+          challans={challans.filter((challan) => selectedChallans.includes(challan.id))}
+          user={userData}
+        />
+      );
+      const blob = await pdf(pdfDoc).toBlob();
+      const url = URL.createObjectURL(blob);
+
+      // Convert blob to base64 for WhatsApp sharing
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => {
+        const base64data = reader.result.split(",")[1];
+        const whatsappMessage = `Here is the PDF of selected challans:\n`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}&attachment=data:application/pdf;base64,${base64data}`;
+        window.open(whatsappUrl, "_blank");
+        URL.revokeObjectURL(url);
+      };
+    } catch (error) {
+      console.error("Error generating share PDF:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to generate share PDF: " + error.message,
+        severity: "error",
+      });
+    }
   };
 
   const handleSelectChallan = (challanId) => {
@@ -717,15 +848,15 @@ const ChallanBook = () => {
         </Grid>
 
         {selectedChallans.length > 0 && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2, gap: 1 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2, gap: 1, flexWrap: "wrap" }}>
             <PDFDownloadLink
               document={
-                <ChallanPDF
+                <ChallanListPDF
                   challans={challans.filter((challan) => selectedChallans.includes(challan.id))}
                   user={userData}
                 />
               }
-              fileName="Challans.pdf"
+              fileName="Selected_Challans.pdf" // Updated file name as per request
             >
               {({ loading }) => (
                 <Button
@@ -754,6 +885,30 @@ const ChallanBook = () => {
               }}
             >
               Print Selected
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Share />}
+              onClick={handleShareSelectedPDF}
+              size="small"
+              sx={{
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
+              Share Selected (PDF)
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<Receipt />}
+              onClick={handleConvertSelectedToSalesBills}
+              size="small"
+              sx={{
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
+              Convert to Sales Bills
             </Button>
           </Box>
         )}
@@ -818,7 +973,7 @@ const ChallanBook = () => {
                       {challan.partyDetails.companyName}
                     </TableCell>
                     <TableCell sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
-                      {challan.partyDetails.mobile || "N/A"}
+                      {challan.partyDetails.mobileNo || "N/A"}
                     </TableCell>
                     <TableCell sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
                       ₹{challan.roundedTotal}

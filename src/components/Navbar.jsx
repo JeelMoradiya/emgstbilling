@@ -90,8 +90,9 @@ const Navbar = () => {
   const navItems = [
     { name: "Home", path: "/" },
     { name: "Parties", onClick: handlePartyMenu },
-    { name: "Invoices", onClick: handleInvoiceMenu },
-    // { name: "Payments", path: "/payments" },
+    { name: "Sales", onClick: handleInvoiceMenu },
+    // { name: "Purchases ", onClick: handleInvoiceMenu },
+    { name: "Payments", path: "/payments" },
   ];
 
   return (
@@ -372,7 +373,7 @@ const Navbar = () => {
                     <Button
                       color="inherit"
                       endIcon={
-                        item.name === "Parties" || item.name === "Invoices"
+                        item.name === "Parties" || item.name === "Sales"
                           ? <ArrowDownIcon />
                           : null
                       }
@@ -537,7 +538,7 @@ const Navbar = () => {
                 <ListItemIcon>
                   <ReceiptIcon sx={{ color: "#ecf0f1" }} />
                 </ListItemIcon>
-                Add Invoice
+                Tax Invoice
               </MenuItem>
               <MenuItem
                 onClick={() => {

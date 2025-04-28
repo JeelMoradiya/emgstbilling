@@ -268,7 +268,7 @@ import {
                     </Text>
                     <Text>{safeChallan.partyDetails.companyName || "N/A"}</Text>
                     <Text>GSTIN: {safeChallan.partyDetails.gstNo || "N/A"}</Text>
-                    <Text>Mobile: {safeChallan.partyDetails.mobile || "N/A"}</Text>
+                    <Text>Mobile: {safeChallan.partyDetails.mobileNo || "N/A"}</Text>
                     <Text>Address: {formatAddress(safeChallan.partyDetails)}</Text>
                   </View>
                 </View>

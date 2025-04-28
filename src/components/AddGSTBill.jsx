@@ -114,9 +114,6 @@ const AddGSTBill = () => {
     partyId: Yup.string()
       .required("Party is required")
       .min(1, "Party selection is required"),
-    paymentMethod: Yup.string()
-      .required("Payment method is required")
-      .oneOf(["cheque", "cash", "upi", "netbanking"], "Invalid payment method"),
     gstRate: Yup.number()
       .required("GST rate is required")
       .min(0, "GST rate cannot be negative")
@@ -1289,57 +1286,6 @@ const AddGSTBill = () => {
                   <FormControl
                     fullWidth
                     error={
-                      formik.touched.paymentMethod &&
-                      Boolean(formik.errors.paymentMethod)
-                    }
-                  >
-                    <InputLabel
-                      id="payment-method-label"
-                      sx={{
-                        fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                        top: "-6px",
-                      }}
-                    >
-                      Payment Method *
-                    </InputLabel>
-                    <Select
-                      labelId="payment-method-label"
-                      id="paymentMethod"
-                      name="paymentMethod"
-                      value={formik.values.paymentMethod}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      size="small"
-                      sx={{
-                        "& .MuiInputBase-root": {
-                          fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                        },
-                      }}
-                    >
-                      <SelectMenuItem value="cheque">Cheque</SelectMenuItem>
-                      <SelectMenuItem value="cash">Cash</SelectMenuItem>
-                      <SelectMenuItem value="upi">UPI</SelectMenuItem>
-                      <SelectMenuItem value="netbanking">
-                        Net Banking
-                      </SelectMenuItem>
-                    </Select>
-                    {formik.touched.paymentMethod &&
-                      formik.errors.paymentMethod && (
-                        <Typography
-                          color="error"
-                          variant="caption"
-                          sx={{ fontSize: { xs: "0.75rem", sm: "0.75rem" } }}
-                        >
-                          {formik.errors.paymentMethod}
-                        </Typography>
-                      )}
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControl
-                    fullWidth
-                    error={
                       formik.touched.gstRate && Boolean(formik.errors.gstRate)
                     }
                   >
@@ -1395,146 +1341,263 @@ const AddGSTBill = () => {
                       fontWeight: "bold",
                     }}
                   >
-                    Items
+                    Items Details
                   </Typography>
-                  {items.map((item, index) => (
-                    <Grid container spacing={2} key={index} sx={{ mb: 2 }}>
-                      <Grid item xs={12} sm={4} md={3}>
-                        <TextField
-                          fullWidth
-                          label="Item Name *"
-                          value={item.name}
-                          onChange={(e) =>
-                            handleItemChange(index, "name", e.target.value)
-                          }
-                          onBlur={() =>
-                            formik.setFieldTouched(`items[${index}].name`, true)
-                          }
-                          error={
-                            formik.touched.items?.[index]?.name &&
-                            Boolean(formik.errors.items?.[index]?.name)
-                          }
-                          helperText={
-                            formik.touched.items?.[index]?.name &&
-                            formik.errors.items?.[index]?.name
-                          }
-                          size="small"
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                            },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4} md={2}>
-                        <TextField
-                          fullWidth
-                          label="HSN Code"
-                          value={item.hsn}
-                          onChange={(e) =>
-                            handleItemChange(index, "hsn", e.target.value)
-                          }
-                          onBlur={() =>
-                            formik.setFieldTouched(`items[${index}].hsn`, true)
-                          }
-                          error={
-                            formik.touched.items?.[index]?.hsn &&
-                            Boolean(formik.errors.items?.[index]?.hsn)
-                          }
-                          helperText={
-                            formik.touched.items?.[index]?.hsn &&
-                            formik.errors.items?.[index]?.hsn
-                          }
-                          size="small"
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                            },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4} md={2}>
-                        <TextField
-                          fullWidth
-                          label="Quantity *"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleItemChange(index, "quantity", e.target.value)
-                          }
-                          onBlur={() =>
-                            formik.setFieldTouched(
-                              `items[${index}].quantity`,
-                              true
-                            )
-                          }
-                          error={
-                            formik.touched.items?.[index]?.quantity &&
-                            Boolean(formik.errors.items?.[index]?.quantity)
-                          }
-                          helperText={
-                            formik.touched.items?.[index]?.quantity &&
-                            formik.errors.items?.[index]?.quantity
-                          }
-                          size="small"
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                            },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4} md={2}>
-                        <TextField
-                          fullWidth
-                          label="Price *"
-                          value={item.price}
-                          onChange={(e) =>
-                            handleItemChange(index, "price", e.target.value)
-                          }
-                          onBlur={() =>
-                            formik.setFieldTouched(
-                              `items[${index}].price`,
-                              true
-                            )
-                          }
-                          error={
-                            formik.touched.items?.[index]?.price &&
-                            Boolean(formik.errors.items?.[index]?.price)
-                          }
-                          helperText={
-                            formik.touched.items?.[index]?.price &&
-                            formik.errors.items?.[index]?.price
-                          }
-                          size="small"
-                          sx={{
-                            "& .MuiInputBase-root": {
-                              fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                            },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4} md={3}>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={() => handleRemoveItem(index)}
-                          size="small"
-                          sx={{
-                            height: "100%",
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </Grid>
-                    </Grid>
-                  ))}
+                  <TableContainer
+                    component={Paper}
+                    elevation={2}
+                    sx={{
+                      borderRadius: 2,
+                      maxWidth: "100%",
+                      overflowX: "auto",
+                    }}
+                  >
+                    <Table sx={{ minWidth: { xs: 300, sm: 650 } }}>
+                      <TableHead>
+                        <TableRow sx={{ backgroundColor: "primary.light" }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            Item Name
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            HSN Code
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            Quantity
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            Price
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            Amount
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            }}
+                          >
+                            Actions
+                          </TableCell>
+                        </TableRow>
+                      </TableHead>
+                      {items.map((item, index) => (
+                        <TableBody>
+                          {items.map((item, index) => (
+                            <TableRow key={index} hover>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  label="Item Name *"
+                                  value={item.name}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      index,
+                                      "name",
+                                      e.target.value
+                                    )
+                                  }
+                                  onBlur={() =>
+                                    formik.setFieldTouched(
+                                      `items[${index}].name`,
+                                      true
+                                    )
+                                  }
+                                  error={
+                                    formik.touched.items?.[index]?.name &&
+                                    Boolean(formik.errors.items?.[index]?.name)
+                                  }
+                                  helperText={
+                                    formik.touched.items?.[index]?.name &&
+                                    formik.errors.items?.[index]?.name
+                                  }
+                                  size="small"
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                    },
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  label="HSN Code"
+                                  value={item.hsn}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      index,
+                                      "hsn",
+                                      e.target.value
+                                    )
+                                  }
+                                  onBlur={() =>
+                                    formik.setFieldTouched(
+                                      `items[${index}].hsn`,
+                                      true
+                                    )
+                                  }
+                                  error={
+                                    formik.touched.items?.[index]?.hsn &&
+                                    Boolean(formik.errors.items?.[index]?.hsn)
+                                  }
+                                  helperText={
+                                    formik.touched.items?.[index]?.hsn &&
+                                    formik.errors.items?.[index]?.hsn
+                                  }
+                                  size="small"
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                    },
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  label="Quantity *"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      index,
+                                      "quantity",
+                                      e.target.value
+                                    )
+                                  }
+                                  onBlur={() =>
+                                    formik.setFieldTouched(
+                                      `items[${index}].quantity`,
+                                      true
+                                    )
+                                  }
+                                  error={
+                                    formik.touched.items?.[index]?.quantity &&
+                                    Boolean(
+                                      formik.errors.items?.[index]?.quantity
+                                    )
+                                  }
+                                  helperText={
+                                    formik.touched.items?.[index]?.quantity &&
+                                    formik.errors.items?.[index]?.quantity
+                                  }
+                                  size="small"
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                    },
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  label="Price *"
+                                  value={item.price}
+                                  onChange={(e) =>
+                                    handleItemChange(
+                                      index,
+                                      "price",
+                                      e.target.value
+                                    )
+                                  }
+                                  onBlur={() =>
+                                    formik.setFieldTouched(
+                                      `items[${index}].price`,
+                                      true
+                                    )
+                                  }
+                                  error={
+                                    formik.touched.items?.[index]?.price &&
+                                    Boolean(formik.errors.items?.[index]?.price)
+                                  }
+                                  helperText={
+                                    formik.touched.items?.[index]?.price &&
+                                    formik.errors.items?.[index]?.price
+                                  }
+                                  size="small"
+                                  sx={{
+                                    "& .MuiInputBase-root": {
+                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                    },
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <Typography variant="body2">
+                                  {(item.quantity * item.price).toFixed(2)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell
+                                sx={{
+                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                }}
+                              >
+                                <IconButton
+                                  color="error"
+                                  onClick={() => handleRemoveItem(index)}
+                                  disabled={items.length <= 1}
+                                  size="small"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      ))}
+                    </Table>
+                  </TableContainer>
                   <Button
                     variant="outlined"
                     startIcon={<AddIcon />}
                     onClick={handleAddItem}
                     sx={{
-                      mt: 1,
+                      mt: 2,
                       fontSize: { xs: "0.75rem", sm: "0.875rem" },
                     }}
                   >
