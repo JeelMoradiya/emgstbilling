@@ -92,6 +92,8 @@ const Payment = () => {
     severity: "success",
   });
 
+  const paymentMethods = ["cheque", "upi", "netbanking", "cash"];
+
   const validationSchema = Yup.object({
     paymentMethod: Yup.string()
       .required("Payment method is required")
@@ -371,7 +373,8 @@ const Payment = () => {
           0
         );
         const totalBrokerage = sortedBills.reduce(
-          (sum, bill) => sum + (Number(bill.paymentDetails?.brokerageAmount) || 0),
+          (sum, bill) =>
+            sum + (Number(bill.paymentDetails?.brokerageAmount) || 0),
           0
         );
 
@@ -1035,7 +1038,9 @@ const Payment = () => {
                       </TableCell>
                       <TableCell>
                         ₹
-                        {Number(bill.paymentDetails?.brokerageAmount || 0).toFixed(2)}
+                        {Number(
+                          bill.paymentDetails?.brokerageAmount || 0
+                        ).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <IconButton
@@ -1218,7 +1223,7 @@ const Payment = () => {
                           variant="subtitle2"
                           color="text.secondary"
                           sx={{
-                            fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                            fontSize: { xs: "0.875rem", sm: "1rem" },
                             mb: 0.5,
                           }}
                         >
@@ -1226,7 +1231,7 @@ const Payment = () => {
                         </Typography>
                         <Typography
                           variant="body1"
-                          sx={{ fontSize: { xs: "0.85rem", sm: "1rem" } }}
+                          sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
                         >
                           {formik.values.paymentMethod
                             ? formik.values.paymentMethod.toUpperCase()
@@ -1234,74 +1239,47 @@ const Payment = () => {
                         </Typography>
                       </>
                     ) : (
-                      <FormControl
+                      <TextField
+                        select
                         fullWidth
+                        id="paymentMethod"
+                        name="paymentMethod"
+                        label="Payment Method"
+                        value={formik.values.paymentMethod}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
                         error={
                           formik.touched.paymentMethod &&
                           Boolean(formik.errors.paymentMethod)
                         }
+                        helperText={
+                          formik.touched.paymentMethod &&
+                          formik.errors.paymentMethod
+                        }
+                        disabled={dialogMode === "edit"}
+                        size="small"
                         sx={{
                           "& .MuiInputBase-root": {
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                            fontSize: { xs: "0.875rem", sm: "1rem" },
                           },
                         }}
                       >
-                        <InputLabel
-                          sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                        <MenuItem
+                          value=""
+                          sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
                         >
-                          Payment Method
-                        </InputLabel>
-                        <Select
-                          id="paymentMethod"
-                          name="paymentMethod"
-                          value={formik.values.paymentMethod}
-                          onChange={formik.handleChange}
-                          onBlur={formik.handleBlur}
-                          label="Payment Method"
-                          disabled={dialogMode === "edit"}
-                          size="small"
-                          sx={{
-                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                          }}
-                        >
+                          Select Method
+                        </MenuItem>
+                        {paymentMethods.map((method) => (
                           <MenuItem
-                            value=""
-                            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
+                            key={method}
+                            value={method}
+                            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
                           >
-                            Select Method
+                            {method.charAt(0).toUpperCase() + method.slice(1)}
                           </MenuItem>
-                          <MenuItem
-                            value="cheque"
-                            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                          >
-                            Cheque
-                          </MenuItem>
-                          <MenuItem
-                            value="upi"
-                            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                          >
-                            UPI
-                          </MenuItem>
-                          <MenuItem
-                            value="netbanking"
-                            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                          >
-                            Net Banking
-                          </MenuItem>
-                          <MenuItem
-                            value="cash"
-                            sx={{ fontSize: { xs: "0.9rem", sm: "1rem" } }}
-                          >
-                            Cash
-                          </MenuItem>
-                        </Select>
-                        {formik.touched.paymentMethod &&
-                          formik.errors.paymentMethod && (
-                            <Typography variant="caption" color="error">
-                              {formik.errors.paymentMethod}
-                            </Typography>
-                          )}
-                      </FormControl>
+                        ))}
+                      </TextField>
                     )}
                   </Grid>
                   <Grid item xs={12} md={6}>

@@ -791,7 +791,7 @@ const Home = () => {
                 <PieChart
                   series={[
                     {
-                      data: filteredBills
+                      data: bills
                         .reduce((acc, bill) => {
                           const method = bill.paymentDetails?.method || "none";
                           const existing = acc.find(
@@ -823,11 +823,8 @@ const Home = () => {
                         }, [])
                         .map((item) => ({
                           ...item,
-                          percentage: filteredBills.length
-                            ? (
-                                (item.value / filteredBills.length) *
-                                100
-                              ).toFixed(1)
+                          percentage: bills.length
+                            ? ((item.value / bills.length) * 100).toFixed(1)
                             : 0,
                         })),
                       innerRadius: 40,
@@ -872,7 +869,7 @@ const Home = () => {
                   Payment Method Breakdown
                 </Typography>
                 <Grid container spacing={1}>
-                  {filteredBills
+                  {bills
                     .reduce((acc, bill) => {
                       const method = bill.paymentDetails?.method || "none";
                       const existing = acc.find(
@@ -904,10 +901,8 @@ const Home = () => {
                     }, [])
                     .map((method) => ({
                       ...method,
-                      percentage: filteredBills.length
-                        ? ((method.value / filteredBills.length) * 100).toFixed(
-                            1
-                          )
+                      percentage: bills.length
+                        ? ((method.value / bills.length) * 100).toFixed(1)
                         : 0,
                     }))
                     .map((method) => (

@@ -62,6 +62,7 @@ import {
   Download,
   Print,
   Share,
+  Search,
 } from "@mui/icons-material";
 import { numberToWords } from "../utils";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
@@ -646,27 +647,18 @@ const AddGSTBill = () => {
     }
   };
 
-  const handleSearch = () => {
-    let filtered = [...bills];
-
-    if (searchParty) {
-      filtered = filtered.filter((bill) => bill.partyId === searchParty.id);
-    }
-
-    if (startDate && endDate) {
-      filtered = filtered.filter((bill) => {
-        try {
-          const billDate = parseISO(bill.date);
-          return isWithinInterval(billDate, {
-            start: new Date(startDate),
-            end: new Date(endDate),
-          });
-        } catch {
-          return false;
-        }
-      });
-    }
-
+const handleSearch = () => {
+    const filtered = bills.filter((bill) => {
+      const partyMatch = searchParty
+        ? bill.partyId === searchParty.id // Adjust based on your bill structure
+        : true;
+      const dateMatch =
+        (startDate
+          ? new Date(bill.date) >= new Date(startDate)
+          : true) &&
+        (endDate ? new Date(bill.date) <= new Date(endDate) : true);
+      return partyMatch && dateMatch;
+    });
     setFilteredBills(filtered);
   };
 
@@ -774,8 +766,8 @@ const AddGSTBill = () => {
           </Alert>
         )}
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={4}>
+        <Grid container display="flex" spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
             <Autocomplete
               id="search-party"
               options={parties}
@@ -828,49 +820,12 @@ const AddGSTBill = () => {
               }}
             />
           </Grid>
-        </Grid>
-
-        {selectedBills.length > 0 && (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                mb: 2,
-                gap: 1,
-              }}
-            >
-              <PDFDownloadLink
-                document={
-                  <BillListPDF
-                    bills={bills.filter((bill) =>
-                      selectedBills.includes(bill.id)
-                    )}
-                    user={userData}
-                  />
-                }
-                fileName="Selected_Bills.pdf"
-              >
-                {({ loading }) => (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    disabled={loading}
-                    size="small"
-                    sx={{
-                      width: { xs: "100%", sm: "auto" },
-                      height: { xs: "40px", sm: "40px" },
-                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                    }}
-                  >
-                    {loading ? <CircularProgress size={20} /> : <Download />}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+          <Grid item xs={12} sm={4}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
               <Button
                 variant="contained"
                 color="primary"
-                onClick={handlePrintSelected}
+                onClick={handleSearch}
                 size="small"
                 sx={{
                   width: { xs: "100%", sm: "auto" },
@@ -878,22 +833,70 @@ const AddGSTBill = () => {
                   fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 }}
               >
-                <Print />
+                <Search />
               </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleShareSelectedWhatsApp}
-                size="small"
-                sx={{
-                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                }}
-              >
-                <Share />
-              </Button>
+              {selectedBills.length > 0 && (
+                <>
+                  <PDFDownloadLink
+                    document={
+                      <BillListPDF
+                        bills={bills.filter((bill) =>
+                          selectedBills.includes(bill.id)
+                        )}
+                        user={userData}
+                      />
+                    }
+                    fileName="Selected_Bills.pdf"
+                  >
+                    {({ loading }) => (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        disabled={loading}
+                        size="small"
+                        sx={{
+                          width: { xs: "100%", sm: "auto" },
+                          height: { xs: "40px", sm: "40px" },
+                          fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                        }}
+                      >
+                        {loading ? (
+                          <CircularProgress size={20} />
+                        ) : (
+                          <Download />
+                        )}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handlePrintSelected}
+                    size="small"
+                    sx={{
+                      width: { xs: "100%", sm: "auto" },
+                      height: { xs: "40px", sm: "40px" },
+                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                    }}
+                  >
+                    <Print />
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleShareSelectedWhatsApp}
+                    size="small"
+                    sx={{
+                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                    }}
+                  >
+                    <Share />
+                  </Button>
+                </>
+              )}
             </Box>
-          </>
-        )}
+          </Grid>
+        </Grid>
 
         <TableContainer
           component={Paper}
@@ -1405,191 +1408,185 @@ const AddGSTBill = () => {
                           </TableCell>
                         </TableRow>
                       </TableHead>
-                      {items.map((item, index) => (
-                        <TableBody>
-                          {items.map((item, index) => (
-                            <TableRow key={index} hover>
-                              <TableCell
+                      <TableBody>
+                        {items.map((item, index) => (
+                          <TableRow key={index} hover>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <TextField
+                                fullWidth
+                                label="Item Name *"
+                                value={item.name}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    "name",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={() =>
+                                  formik.setFieldTouched(
+                                    `items[${index}].name`,
+                                    true
+                                  )
+                                }
+                                error={
+                                  formik.touched.items?.[index]?.name &&
+                                  Boolean(formik.errors.items?.[index]?.name)
+                                }
+                                helperText={
+                                  formik.touched.items?.[index]?.name &&
+                                  formik.errors.items?.[index]?.name
+                                }
+                                size="small"
                                 sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                  "& .MuiInputBase-root": {
+                                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                  },
                                 }}
-                              >
-                                <TextField
-                                  fullWidth
-                                  label="Item Name *"
-                                  value={item.name}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      index,
-                                      "name",
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={() =>
-                                    formik.setFieldTouched(
-                                      `items[${index}].name`,
-                                      true
-                                    )
-                                  }
-                                  error={
-                                    formik.touched.items?.[index]?.name &&
-                                    Boolean(formik.errors.items?.[index]?.name)
-                                  }
-                                  helperText={
-                                    formik.touched.items?.[index]?.name &&
-                                    formik.errors.items?.[index]?.name
-                                  }
-                                  size="small"
-                                  sx={{
-                                    "& .MuiInputBase-root": {
-                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                                    },
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <TextField
+                                fullWidth
+                                label="HSN Code"
+                                value={item.hsn}
+                                onChange={(e) =>
+                                  handleItemChange(index, "hsn", e.target.value)
+                                }
+                                onBlur={() =>
+                                  formik.setFieldTouched(
+                                    `items[${index}].hsn`,
+                                    true
+                                  )
+                                }
+                                error={
+                                  formik.touched.items?.[index]?.hsn &&
+                                  Boolean(formik.errors.items?.[index]?.hsn)
+                                }
+                                helperText={
+                                  formik.touched.items?.[index]?.hsn &&
+                                  formik.errors.items?.[index]?.hsn
+                                }
+                                size="small"
                                 sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                  "& .MuiInputBase-root": {
+                                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                  },
                                 }}
-                              >
-                                <TextField
-                                  fullWidth
-                                  label="HSN Code"
-                                  value={item.hsn}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      index,
-                                      "hsn",
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={() =>
-                                    formik.setFieldTouched(
-                                      `items[${index}].hsn`,
-                                      true
-                                    )
-                                  }
-                                  error={
-                                    formik.touched.items?.[index]?.hsn &&
-                                    Boolean(formik.errors.items?.[index]?.hsn)
-                                  }
-                                  helperText={
-                                    formik.touched.items?.[index]?.hsn &&
-                                    formik.errors.items?.[index]?.hsn
-                                  }
-                                  size="small"
-                                  sx={{
-                                    "& .MuiInputBase-root": {
-                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                                    },
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell
-                                sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                                }}
-                              >
-                                <TextField
-                                  fullWidth
-                                  label="Quantity *"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      index,
-                                      "quantity",
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={() =>
-                                    formik.setFieldTouched(
-                                      `items[${index}].quantity`,
-                                      true
-                                    )
-                                  }
-                                  error={
-                                    formik.touched.items?.[index]?.quantity &&
-                                    Boolean(
-                                      formik.errors.items?.[index]?.quantity
-                                    )
-                                  }
-                                  helperText={
-                                    formik.touched.items?.[index]?.quantity &&
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <TextField
+                                fullWidth
+                                label="Quantity *"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={() =>
+                                  formik.setFieldTouched(
+                                    `items[${index}].quantity`,
+                                    true
+                                  )
+                                }
+                                error={
+                                  formik.touched.items?.[index]?.quantity &&
+                                  Boolean(
                                     formik.errors.items?.[index]?.quantity
-                                  }
-                                  size="small"
-                                  sx={{
-                                    "& .MuiInputBase-root": {
-                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                                    },
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell
+                                  )
+                                }
+                                helperText={
+                                  formik.touched.items?.[index]?.quantity &&
+                                  formik.errors.items?.[index]?.quantity
+                                }
+                                size="small"
                                 sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                  "& .MuiInputBase-root": {
+                                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                  },
                                 }}
-                              >
-                                <TextField
-                                  fullWidth
-                                  label="Price *"
-                                  value={item.price}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      index,
-                                      "price",
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={() =>
-                                    formik.setFieldTouched(
-                                      `items[${index}].price`,
-                                      true
-                                    )
-                                  }
-                                  error={
-                                    formik.touched.items?.[index]?.price &&
-                                    Boolean(formik.errors.items?.[index]?.price)
-                                  }
-                                  helperText={
-                                    formik.touched.items?.[index]?.price &&
-                                    formik.errors.items?.[index]?.price
-                                  }
-                                  size="small"
-                                  sx={{
-                                    "& .MuiInputBase-root": {
-                                      fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                                    },
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <TextField
+                                fullWidth
+                                label="Price *"
+                                value={item.price}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    "price",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={() =>
+                                  formik.setFieldTouched(
+                                    `items[${index}].price`,
+                                    true
+                                  )
+                                }
+                                error={
+                                  formik.touched.items?.[index]?.price &&
+                                  Boolean(formik.errors.items?.[index]?.price)
+                                }
+                                helperText={
+                                  formik.touched.items?.[index]?.price &&
+                                  formik.errors.items?.[index]?.price
+                                }
+                                size="small"
                                 sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                                  "& .MuiInputBase-root": {
+                                    fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                                  },
                                 }}
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <Typography variant="body2">
+                                {(item.quantity * item.price).toFixed(2)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                              }}
+                            >
+                              <IconButton
+                                color="error"
+                                onClick={() => handleRemoveItem(index)}
+                                disabled={items.length <= 1}
+                                size="small"
                               >
-                                <Typography variant="body2">
-                                  {(item.quantity * item.price).toFixed(2)}
-                                </Typography>
-                              </TableCell>
-                              <TableCell
-                                sx={{
-                                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                                }}
-                              >
-                                <IconButton
-                                  color="error"
-                                  onClick={() => handleRemoveItem(index)}
-                                  disabled={items.length <= 1}
-                                  size="small"
-                                >
-                                  <Delete />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      ))}
+                                <Delete />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
                     </Table>
                   </TableContainer>
                   <Button
