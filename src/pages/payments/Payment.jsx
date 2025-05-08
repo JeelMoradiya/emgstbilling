@@ -8,8 +8,8 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -55,7 +55,7 @@ import {
   Close,
 } from "@mui/icons-material";
 import { format, parseISO } from "date-fns";
-import logo from "../assets/logo.gif";
+import logo from "../../assets/logo.gif";
 
 const Payment = () => {
   const { partyId } = useParams();

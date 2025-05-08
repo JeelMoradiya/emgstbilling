@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Container,
   Paper,
@@ -26,7 +26,7 @@ import {
   Search,
   MoreVert,
 } from "@mui/icons-material";
-import logo from "../assets/logo.gif"
+import logo from "../../assets/logo.gif"
 
 const AllParties = () => {
   const [parties, setParties] = useState([]);

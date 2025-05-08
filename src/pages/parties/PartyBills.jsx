@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Container,
   Paper,
@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import { ArrowBack, Add, Search, Refresh, MoreVert } from "@mui/icons-material";
 import { format, isWithinInterval, parseISO } from "date-fns";
-import logo from "../assets/logo.gif"
+import logo from "../../assets/logo.gif"
 
 const PartyBills = () => {
   const { partyId } = useParams();

@@ -9,10 +9,10 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Container,
   Paper,
@@ -56,7 +56,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import logo from "../assets/logo.gif";
+import logo from "../../assets/logo.gif";
 
 const PartyManagement = () => {
   const theme = useTheme();

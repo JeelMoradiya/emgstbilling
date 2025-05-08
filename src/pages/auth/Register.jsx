@@ -1,3 +1,5 @@
+
+
 import { useState } from "react";
 import {
   Container,
@@ -22,8 +24,8 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
-import { useAuth } from "../contexts/AuthContext";
-import logo from "../assets/weblogo.png";
+import { useAuth } from "../../contexts/AuthContext";
+import logo from "../../assets/weblogo.png";
 
 const RegisterSchema = Yup.object().shape({
   fullName: Yup.string()

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -45,10 +45,10 @@ import {
 } from "@mui/icons-material";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import BillPDF from "./BillPDF";
-import { numberToWords } from "../utils";
-import { useAuth } from "../contexts/AuthContext";
+import { numberToWords } from "../../utils/utils";
+import { useAuth } from "../../contexts/AuthContext";
 import { format } from "date-fns";
-import logo from "../assets/logo.gif";
+import logo from "../../assets/logo.gif";
 
 const stateCities = {
   Gujarat: [

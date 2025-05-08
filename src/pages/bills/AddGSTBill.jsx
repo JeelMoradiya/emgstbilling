@@ -13,8 +13,8 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -64,10 +64,10 @@ import {
   Share,
   Search,
 } from "@mui/icons-material";
-import { numberToWords } from "../utils";
+import { numberToWords } from "../../utils/utils";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import BillPDF from "./BillPDF";
-import logo from "../assets/logo.gif";
+import logo from "../../assets/logo.gif";
 import { Buffer } from "buffer";
 import BillListPDF from "./BillListPDF";
 

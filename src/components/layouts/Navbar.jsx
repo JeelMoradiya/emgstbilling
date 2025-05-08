@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
@@ -33,8 +34,8 @@ import {
   MoreVert as MoreVertIcon,
   PersonAdd,
 } from "@mui/icons-material";
-import { useAuth } from "../contexts/AuthContext";
-import logo from "../assets/logo.png";
+import { useAuth } from "../../contexts/AuthContext";
+import logo from "../../assets/logo.png";
 
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);

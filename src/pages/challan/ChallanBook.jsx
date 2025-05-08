@@ -12,8 +12,8 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -59,8 +59,8 @@ import {
   Share,
   Receipt, // Icon for Convert to Sales Bill
 } from "@mui/icons-material";
-import { numberToWords } from "../utils";
-import logo from "../assets/logo.gif";
+import { numberToWords } from "../../utils/utils";
+import logo from "../../assets/logo.gif";
 import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import ChallanPDF from "./ChallanPDF";
 import ChallanListPDF from "./ChallanListPDF"; // Import the new ChallanListPDF

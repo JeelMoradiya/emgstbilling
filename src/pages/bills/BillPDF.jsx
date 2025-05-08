@@ -1,6 +1,6 @@
 import { Page, Text, View, Document, StyleSheet, Image } from "@react-pdf/renderer";
 import { format } from "date-fns";
-import { numberToWords } from "../utils";
+import { numberToWords } from "../../utils/utils";
 
 const styles = StyleSheet.create({
   page: {

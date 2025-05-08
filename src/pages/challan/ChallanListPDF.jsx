@@ -7,7 +7,7 @@ import {
     Image,
   } from "@react-pdf/renderer";
   import { format, parseISO } from "date-fns";
-  import { numberToWords } from "../utils";
+  import { numberToWords } from "../../utils/utils";
   
   const styles = StyleSheet.create({
     page: {
